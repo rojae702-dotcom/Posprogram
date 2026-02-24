@@ -317,9 +317,18 @@ function bindEvents() {
 
 function loadProducts() {
     allProducts = products.list(shopId);
-    const cats = ['전체', ...categories.list(shopId).map(c => c.name)];
-    renderCategoryNav(cats);
-    renderProducts(allProducts);
+    // 전체 + 실제 등록된 카테고리만 탭으로 표시
+    const usedCatNames = categories.list(shopId).map(c => c.name);
+    renderCategoryNav(['전체', ...usedCatNames]);
+    renderProducts(allProducts);   // 전체 탭: 모든 상품 표시
+}
+
+// ── 카테고리 필터 헬퍼 ──
+function getProductCats(p) {
+    // migrateProduct 결과를 신뢰하지만, 혹시 모를 경우 재방어
+    if (Array.isArray(p.categories) && p.categories.length > 0) return p.categories;
+    if (p.category && p.category.trim()) return [p.category];
+    return [];   // 카테고리 미지정 → 전체에만 표시
 }
 
 // ── 카테고리 ──
@@ -334,11 +343,10 @@ function renderCategoryNav(cats) {
             nav.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const cat = btn.dataset.cat;
-            // 다중 카테고리 호환 필터
-            const filtered = cat === '전체' ? allProducts : allProducts.filter(p => {
-                const cats = Array.isArray(p.categories) ? p.categories : (p.category ? [p.category] : []);
-                return cats.includes(cat);
-            });
+            // 전체: 모든 상품 / 카테고리: 해당 카테고리 포함된 상품
+            const filtered = cat === '전체'
+                ? allProducts
+                : allProducts.filter(p => getProductCats(p).includes(cat));
             renderProducts(filtered);
         });
     });
