@@ -36,7 +36,7 @@
             font-family: 'Noto Sans KR', sans-serif;
             background: var(--bg); color: var(--text);
             font-size: 14px; -webkit-font-smoothing: antialiased;
-            height: 100dvh; /* dvh: 주소창 제외한 실제 화면 높이 */
+            height: 100dvh;
             overflow: hidden; display: flex; flex-direction: column;
         }
         /* 버튼 */
@@ -184,8 +184,8 @@
 <body>
 
 <header class="top-bar">
-    <button class="btn btn-ghost" onclick="location.href='./local-shops.html'">🏪 부스 목록</button>
-    <button class="btn btn-ghost" onclick="location.href='local-inventory.html?shopId='+shopId">상품 관리</button>
+    <button class="btn btn-ghost" id="btn-shops">🏪 부스 목록</button>
+    <button class="btn btn-ghost" id="btn-inventory">상품 관리</button>
     <span id="shop-name-display" class="top-bar-title"></span>
     <div style="width:80px"></div>
 </header>
@@ -210,10 +210,10 @@
                 <span class="total-amount" id="total-price">0원</span>
             </div>
             <div class="pay-buttons">
-                <button class="pay-btn" onclick="handlePayment('현금')">현금결제</button>
-                <button class="pay-btn" onclick="handlePayment('계좌이체')">계좌이체</button>
+                <button class="pay-btn" id="pay-cash">현금결제</button>
+                <button class="pay-btn" id="pay-transfer">계좌이체</button>
             </div>
-            <button class="extra-btn" onclick="openNonSaleModal()">📦 판매 외 기록</button>
+            <button class="extra-btn" id="btn-nonsale">📦 판매 외 기록</button>
         </div>
         <div class="nonsale-log" id="nonsale-log" style="display:none;">
             <div class="nonsale-log-title">판매 외 기록</div>
@@ -229,11 +229,11 @@
 
         <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">사유 선택</div>
         <div class="reason-grid">
-            <button class="reason-btn" onclick="selectReason(this)" data-reason="선물 / 나눔 / 사은품">🎁 선물 / 나눔 / 사은품</button>
-            <button class="reason-btn" onclick="selectReason(this)" data-reason="파본 / 불량 / 교환">🔄 파본 / 불량 / 교환</button>
-            <button class="reason-btn" onclick="selectReason(this)" data-reason="샘플 / 내부 사용">🖼️ 샘플 / 내부 사용</button>
-            <button class="reason-btn" onclick="selectReason(this)" data-reason="분실 / 도난">🔍 분실 / 도난</button>
-            <button class="reason-btn" onclick="selectReason(this)" data-reason="기타" style="grid-column:1/-1;">📝 기타</button>
+            <button class="reason-btn" data-reason="선물 / 나눔 / 사은품">🎁 선물 / 나눔 / 사은품</button>
+            <button class="reason-btn" data-reason="파본 / 불량 / 교환">🔄 파본 / 불량 / 교환</button>
+            <button class="reason-btn" data-reason="샘플 / 내부 사용">🖼️ 샘플 / 내부 사용</button>
+            <button class="reason-btn" data-reason="분실 / 도난">🔍 분실 / 도난</button>
+            <button class="reason-btn" data-reason="기타" style="grid-column:1/-1;">📝 기타</button>
         </div>
 
         <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">상품 선택</div>
@@ -242,8 +242,8 @@
         <textarea id="nonsale-memo" class="memo-input" rows="2" placeholder="메모 입력 (선택)"></textarea>
 
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeNonSaleModal()">돌아가기</button>
-            <button class="btn-confirm" onclick="confirmNonSale()">기록 확정하기</button>
+            <button class="btn-cancel" id="nonsale-cancel-btn">돌아가기</button>
+            <button class="btn-confirm" id="nonsale-confirm-btn">기록 확정하기</button>
         </div>
     </div>
 </div>
@@ -252,8 +252,20 @@
 import { shops, categories, products, sales, getShopId } from './local-storage.js';
 
 const shopId = getShopId();
+// ★ 헤더 버튼에서 참조할 수 있도록 window에 노출
+window._posShopId = shopId;
+
 let cart = [];
 let allProducts = [];
+let nonSaleItems = {};
+let selectedReason = '';
+let nonSaleLogs = [];
+
+try {
+    nonSaleLogs = JSON.parse(localStorage.getItem('yul_nonsale_logs') || '[]');
+} catch (e) {
+    nonSaleLogs = [];
+}
 
 // shopId 없으면 목록으로
 if (!shopId) { location.href = './local-shops.html'; }
@@ -265,6 +277,42 @@ function init() {
     categories.init(shopId);
     loadProducts();
     renderNonSaleLog();
+    bindEvents();
+}
+
+function bindEvents() {
+    // 헤더 버튼 — addEventListener로 Safari 완벽 호환
+    document.getElementById('btn-shops').addEventListener('click', () => {
+        location.href = './local-shops.html';
+    });
+    document.getElementById('btn-inventory').addEventListener('click', () => {
+        location.href = 'local-inventory.html?shopId=' + shopId;
+    });
+
+    // 결제 버튼
+    document.getElementById('pay-cash').addEventListener('click', () => handlePayment('현금'));
+    document.getElementById('pay-transfer').addEventListener('click', () => handlePayment('계좌이체'));
+
+    // 판매 외 기록 버튼
+    document.getElementById('btn-nonsale').addEventListener('click', openNonSaleModal);
+
+    // 사유 버튼
+    document.querySelectorAll('.reason-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedReason = btn.dataset.reason;
+        });
+    });
+
+    // 모달 확인/취소
+    document.getElementById('nonsale-cancel-btn').addEventListener('click', closeNonSaleModal);
+    document.getElementById('nonsale-confirm-btn').addEventListener('click', confirmNonSale);
+
+    // 모달 바깥 클릭
+    document.getElementById('modal-nonsale').addEventListener('click', function (e) {
+        if (e.target === this) closeNonSaleModal();
+    });
 }
 
 function loadProducts() {
@@ -278,31 +326,31 @@ function loadProducts() {
 function renderCategoryNav(cats) {
     const nav = document.getElementById('category-nav');
     nav.innerHTML = cats.map((cat, i) => `
-        <button class="cat-btn ${i === 0 ? 'active' : ''}" onclick="filterCat('${cat}', this)">
-            ${cat}
-        </button>
+        <button class="cat-btn ${i === 0 ? 'active' : ''}" data-cat="${cat}">${cat}</button>
     `).join('');
-}
 
-window.filterCat = (cat, btn) => {
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const filtered = cat === '전체' ? allProducts : allProducts.filter(p => p.category === cat);
-    renderProducts(filtered);
-};
+    nav.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            nav.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const cat = btn.dataset.cat;
+            const filtered = cat === '전체' ? allProducts : allProducts.filter(p => p.category === cat);
+            renderProducts(filtered);
+        });
+    });
+}
 
 // ── 상품 렌더링 ──
 function renderProducts(list) {
     const grid = document.getElementById('product-grid');
     if (list.length === 0) {
-        grid.innerHTML = '<div class="no-products">등록된 상품이 없습니다.<br>상품 관리에서 추가해주세요.</div>';
+        grid.innerHTML = '<div style="color:var(--text-sub);padding:40px;text-align:center;grid-column:1/-1;">등록된 상품이 없습니다.<br>상품 관리에서 추가해주세요.</div>';
         return;
     }
     grid.innerHTML = list.map(p => {
         const isSoldOut = p.status === '품절';
         return `
-        <div class="product-card ${isSoldOut ? 'sold-out-card' : ''}"
-             onclick="${isSoldOut ? '' : `addToCart('${p.id}')`}">
+        <div class="product-card ${isSoldOut ? 'sold-out-card' : ''}" data-product-id="${p.id}" data-sold-out="${isSoldOut}">
             <div class="product-img-wrap">
                 ${p.imageUrl
                     ? `<img src="${p.imageUrl}" alt="${p.name}">`
@@ -315,23 +363,22 @@ function renderProducts(list) {
             </div>
         </div>`;
     }).join('');
+
+    // 상품 카드 클릭 — 이벤트 위임
+    grid.querySelectorAll('.product-card:not(.sold-out-card)').forEach(card => {
+        card.addEventListener('click', () => addToCart(card.dataset.productId));
+    });
 }
 
 // ── 장바구니 ──
-window.addToCart = (id) => {
+function addToCart(id) {
     const p = allProducts.find(p => p.id === id);
     if (!p) return;
     const existing = cart.find(c => c.id === id);
     if (existing) existing.quantity++;
     else cart.push({ id: p.id, name: p.name, price: p.price, quantity: 1 });
     renderCart();
-};
-
-window.updateQty = (idx, change) => {
-    cart[idx].quantity += change;
-    if (cart[idx].quantity <= 0) cart.splice(idx, 1);
-    renderCart();
-};
+}
 
 function renderCart() {
     const el = document.getElementById('cart-items');
@@ -344,63 +391,84 @@ function renderCart() {
         <div class="cart-row">
             <div class="cart-row-name">${item.name}</div>
             <div class="cart-row-qty">
-                <button class="qty-btn" onclick="updateQty(${i}, -1)">−</button>
+                <button class="qty-btn" data-idx="${i}" data-delta="-1">−</button>
                 <span class="qty-num">${item.quantity}</span>
-                <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
+                <button class="qty-btn" data-idx="${i}" data-delta="1">+</button>
             </div>
             <div class="cart-row-price">${(item.price * item.quantity).toLocaleString()}원</div>
         </div>
     `).join('');
+
+    // 수량 버튼 이벤트
+    el.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.idx);
+            const delta = parseInt(btn.dataset.delta);
+            cart[idx].quantity += delta;
+            if (cart[idx].quantity <= 0) cart.splice(idx, 1);
+            renderCart();
+        });
+    });
+
     const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
     document.getElementById('total-price').textContent = total.toLocaleString() + '원';
 }
 
-// ── 판매 외 기록 ──
-let nonSaleItems = {}; // { productId: qty }
-let selectedReason = '';
-let nonSaleLogs = JSON.parse(localStorage.getItem('yul_nonsale_logs') || '[]');
+// ── 결제 ──
+function handlePayment(method) {
+    if (cart.length === 0) { alert('담긴 상품이 없습니다.'); return; }
+    const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+    sales.addOrder(shopId, cart, method);
+    alert('총 ' + total.toLocaleString() + '원 ' + method + ' 결제 완료!');
+    cart = [];
+    renderCart();
+}
 
-window.openNonSaleModal = () => {
+// ── 판매 외 기록 ──
+function openNonSaleModal() {
     nonSaleItems = {};
     selectedReason = '';
     document.getElementById('nonsale-memo').value = '';
     document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
 
-    // 상품 목록 렌더링
     const list = document.getElementById('nonsale-product-list');
-    list.innerHTML = allProducts.filter(p => p.status !== '품절').map(p => `
-        <div class="nonsale-item">
-            ${p.imageUrl
-                ? `<img class="nonsale-item-img" src="${p.imageUrl}">`
-                : `<div class="nonsale-item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-sub);">없음</div>`}
-            <span class="nonsale-item-name">${p.name}</span>
-            <div class="nonsale-qty-wrap">
-                <button class="nonsale-qty-btn" onclick="changeNonSaleQty('${p.id}', -1)">−</button>
-                <span class="nonsale-qty-num" id="nqty-${p.id}">0</span>
-                <button class="nonsale-qty-btn" onclick="changeNonSaleQty('${p.id}', 1)">+</button>
+    const availableProducts = allProducts.filter(p => p.status !== '품절');
+
+    if (availableProducts.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px;font-size:13px;">등록된 상품이 없습니다.</div>';
+    } else {
+        list.innerHTML = availableProducts.map(p => `
+            <div class="nonsale-item">
+                ${p.imageUrl
+                    ? `<img class="nonsale-item-img" src="${p.imageUrl}">`
+                    : `<div class="nonsale-item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-sub);">없음</div>`}
+                <span class="nonsale-item-name">${p.name}</span>
+                <div class="nonsale-qty-wrap">
+                    <button class="nonsale-qty-btn" data-pid="${p.id}" data-delta="-1">−</button>
+                    <span class="nonsale-qty-num" id="nqty-${p.id}">0</span>
+                    <button class="nonsale-qty-btn" data-pid="${p.id}" data-delta="1">+</button>
+                </div>
             </div>
-        </div>
-    `).join('') || '<div style="color:var(--text-sub);text-align:center;padding:20px;font-size:13px;">등록된 상품이 없습니다.</div>';
+        `).join('');
+
+        list.querySelectorAll('.nonsale-qty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pid = btn.dataset.pid;
+                const delta = parseInt(btn.dataset.delta);
+                nonSaleItems[pid] = Math.max(0, (nonSaleItems[pid] || 0) + delta);
+                document.getElementById('nqty-' + pid).textContent = nonSaleItems[pid];
+            });
+        });
+    }
 
     document.getElementById('modal-nonsale').style.display = 'block';
-};
+}
 
-window.selectReason = (btn) => {
-    document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedReason = btn.dataset.reason;
-};
-
-window.changeNonSaleQty = (id, delta) => {
-    nonSaleItems[id] = Math.max(0, (nonSaleItems[id] || 0) + delta);
-    document.getElementById('nqty-' + id).textContent = nonSaleItems[id];
-};
-
-window.closeNonSaleModal = () => {
+function closeNonSaleModal() {
     document.getElementById('modal-nonsale').style.display = 'none';
-};
+}
 
-window.confirmNonSale = () => {
+function confirmNonSale() {
     if (!selectedReason) { alert('사유를 선택해주세요.'); return; }
     const selected = Object.entries(nonSaleItems).filter(([, qty]) => qty > 0);
     if (selected.length === 0) { alert('상품을 1개 이상 선택해주세요.'); return; }
@@ -425,19 +493,22 @@ window.confirmNonSale = () => {
     closeNonSaleModal();
     renderNonSaleLog();
 
-    const summary = log.items.map(i => `${i.productName} ${i.qty}개`).join(', ');
-    showToast(`📦 기록 완료: [${selectedReason}] ${summary}`);
-};
+    const summary = log.items.map(i => i.productName + ' ' + i.qty + '개').join(', ');
+    showToast('📦 기록 완료: [' + selectedReason + '] ' + summary);
+}
 
 function renderNonSaleLog() {
     const wrap = document.getElementById('nonsale-log');
     const list = document.getElementById('nonsale-log-items');
     if (nonSaleLogs.length === 0) { wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
-    const fmtTime = iso => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+    const fmtTime = iso => {
+        const d = new Date(iso);
+        return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    };
     list.innerHTML = nonSaleLogs.slice(0, 5).map(log => `
         <div class="nonsale-log-item">
-            <span>${fmtTime(log.createdAt)} ${log.items.map(i => `${i.productName} ${i.qty}개`).join(', ')}${log.memo ? ` · ${log.memo}` : ''}</span>
+            <span>${fmtTime(log.createdAt)} ${log.items.map(i => i.productName + ' ' + i.qty + '개').join(', ')}${log.memo ? ' · ' + log.memo : ''}</span>
             <span class="log-reason-tag">${log.reason}</span>
         </div>
     `).join('');
@@ -446,23 +517,15 @@ function renderNonSaleLog() {
 function showToast(msg) {
     const t = document.createElement('div');
     t.textContent = msg;
-    Object.assign(t.style, { position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', background:'#1a1d23', color:'white', padding:'12px 24px', borderRadius:'8px', fontWeight:'600', fontSize:'13px', boxShadow:'0 4px 20px rgba(0,0,0,0.3)', zIndex:'9999', whiteSpace:'nowrap' });
+    Object.assign(t.style, {
+        position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+        background:'#1a1d23', color:'white', padding:'12px 24px',
+        borderRadius:'8px', fontWeight:'600', fontSize:'13px',
+        boxShadow:'0 4px 20px rgba(0,0,0,0.3)', zIndex:'9999', whiteSpace:'nowrap'
+    });
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2500);
 }
-
-// 모달 바깥 클릭 닫기
-document.getElementById('modal-nonsale').addEventListener('click', function(e) {
-    if (e.target === this) closeNonSaleModal();
-});
-window.handlePayment = (method) => {
-    if (cart.length === 0) return alert('담긴 상품이 없습니다.');
-    const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
-    sales.addOrder(shopId, cart, method);
-    alert(`총 ${total.toLocaleString()}원 ${method} 결제 완료!`);
-    cart = [];
-    renderCart();
-};
 
 init();
 </script>
