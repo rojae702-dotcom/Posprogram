@@ -2,10 +2,11 @@
     "name": "Yul POS",
     "short_name": "Yul POS",
     "description": "행사용 POS 관리 시스템",
-    "start_url": "./login.html",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "orientation": "landscape",
-    "background_color": "#f4f6f8",
+    "background_color": "#a0f3ef",
     "theme_color": "#a0f3ef",
     "icons": [
         {
