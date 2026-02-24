@@ -34,9 +34,13 @@ export function getShopId() {
 // ── 구버전 상품 데이터 호환 변환 ──
 // category(단일 string) → categories(string 배열)
 function migrateProduct(p) {
-    if (!Array.isArray(p.categories)) {
+    // 배열이 아니거나 빈 배열인 경우 모두 변환
+    if (!Array.isArray(p.categories) || p.categories.length === 0) {
         p.categories = p.category ? [p.category] : ['일반'];
     }
+    // categories 안에 빈 문자열/null 제거
+    p.categories = p.categories.filter(c => c && typeof c === 'string' && c.trim() !== '');
+    if (p.categories.length === 0) p.categories = ['일반'];
     return p;
 }
 
@@ -141,9 +145,11 @@ export const products = {
     add: async (shopId, data, imageFile = null) => {
         const items = load(keys(shopId).products);
         // categories 배열로 저장 (단일값으로 넘어와도 배열로 정규화)
-        const cats = Array.isArray(data.categories)
+        let cats = Array.isArray(data.categories)
             ? data.categories
-            : (data.category ? [data.category] : ['일반']);
+            : (data.category ? [data.category] : []);
+        cats = cats.filter(c => c && typeof c === 'string' && c.trim() !== '');
+        if (cats.length === 0) cats = ['일반'];
 
         const product = {
             id: generateId(),
@@ -167,9 +173,11 @@ export const products = {
         const idx = items.findIndex(p => p.id === id);
         if (idx === -1) return null;
 
-        const cats = Array.isArray(data.categories)
+        let cats = Array.isArray(data.categories)
             ? data.categories
-            : (data.category ? [data.category] : ['일반']);
+            : (data.category ? [data.category] : []);
+        cats = cats.filter(c => c && typeof c === 'string' && c.trim() !== '');
+        if (cats.length === 0) cats = ['일반'];
 
         items[idx] = {
             ...items[idx],
