@@ -467,7 +467,9 @@ function renderCategoryCheckboxes(gridId, selectedCats) {
     }).join('');
 
     grid.querySelectorAll('.cat-checkbox-label').forEach(label => {
-        label.addEventListener('click', () => {
+        label.addEventListener('click', (e) => {
+            // input 자체 클릭은 무시 (display:none이라 실제로는 발생 안 하지만 방어)
+            e.preventDefault();
             const cb = label.querySelector('input[type="checkbox"]');
             cb.checked = !cb.checked;
             label.classList.toggle('checked', cb.checked);
