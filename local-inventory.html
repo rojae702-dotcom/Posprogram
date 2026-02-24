@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS — 상품 관리</title>
+    <title>Yul POS — 상품 관리</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="manifest" href="./manifest.json">
@@ -121,7 +121,7 @@
         .cat-delete-btn { width: 22px; height: 22px; border-radius: 50%; background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
         .cat-delete-btn:hover { background: var(--danger-light); }
         .cat-items { min-height: 160px; display: flex; flex-direction: column; gap: 8px; }
-        .cat-item { background: var(--white); padding: 10px 12px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); cursor: grab; font-size: 13px; border: 1px solid var(--border); }
+        .cat-item { background: var(--white); padding: 10px 12px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); cursor: grab; font-size: 13px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; user-select: none; -webkit-user-select: none; touch-action: none; }
         .cat-item:active { cursor: grabbing; }
         .cat-item.dragging { opacity: .5; }
         .cat-drop-zone { border: 2px dashed var(--mint-dark) !important; background: var(--mint-light) !important; }
@@ -461,35 +461,138 @@ function renderCategoryBoard() {
     const board = document.getElementById('cat-board');
     const prods = products.list();
     board.innerHTML = allCategories.map(cat => `
-        <div class="cat-column"
-            ondragover="event.preventDefault(); this.classList.add('cat-drop-zone');"
-            ondragleave="this.classList.remove('cat-drop-zone');"
-            ondrop="handleDrop(event, '${cat.name}')">
+        <div class="cat-column" data-cat="${cat.name}">
             <div class="cat-column-header">
                 <span class="cat-column-title">${cat.name}</span>
                 <button class="cat-delete-btn" onclick="removeCat('${cat.id}','${cat.name}')">×</button>
             </div>
-            <div class="cat-items">
+            <div class="cat-items" data-cat="${cat.name}">
                 ${prods.filter(p => p.category === cat.name).map(p => `
-                    <div class="cat-item" draggable="true"
-                        ondragstart="window._dragId='${p.id}'; this.classList.add('dragging')"
-                        ondragend="this.classList.remove('dragging')">
-                        ${p.name}
+                    <div class="cat-item" data-id="${p.id}">
+                        ${p.imageUrl
+                            ? `<img src="${p.imageUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;">`
+                            : `<div style="width:36px;height:36px;border-radius:6px;background:var(--bg);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-sub);">없음</div>`
+                        }
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+                        <span style="font-size:11px;color:var(--text-sub);flex-shrink:0;">${p.price.toLocaleString()}원</span>
                     </div>
                 `).join('') || '<div style="color:var(--text-sub);font-size:12px;padding:8px;text-align:center;">상품 없음</div>'}
             </div>
         </div>
     `).join('');
+
+    initTouchDrag();
 }
 
-window.handleDrop = (e, targetCat) => {
-    e.currentTarget.classList.remove('cat-drop-zone');
-    if (!window._dragId) return;
-    products.updateCategory(window._dragId, targetCat);
-    window._dragId = null;
-    loadAll();
-    renderCategoryBoard();
-};
+function initTouchDrag() {
+    let dragId = null;
+    let ghost = null;
+    let placeholder = null;
+    let offsetX = 0, offsetY = 0;
+
+    function getItemsColAt(x, y) {
+        const cols = document.querySelectorAll('.cat-items');
+        for (const col of cols) {
+            const r = col.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return col;
+        }
+        // 컬럼 전체 영역도 체크
+        for (const col of document.querySelectorAll('.cat-column')) {
+            const r = col.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
+                return col.querySelector('.cat-items');
+        }
+        return null;
+    }
+
+    function startDrag(e, el) {
+        const touch = e.touches ? e.touches[0] : e;
+        dragId = el.dataset.id;
+        const rect = el.getBoundingClientRect();
+        offsetX = touch.clientX - rect.left;
+        offsetY = touch.clientY - rect.top;
+
+        // 유령 복제본
+        ghost = el.cloneNode(true);
+        ghost.style.cssText = `position:fixed;z-index:9999;pointer-events:none;
+            width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;
+            opacity:0.9;box-shadow:0 8px 28px rgba(0,0,0,0.2);
+            background:#fff;border:2px solid var(--mint-dark);border-radius:var(--radius-sm);
+            display:flex;align-items:center;gap:10px;padding:10px 12px;`;
+        document.body.appendChild(ghost);
+
+        // 원본 자리에 placeholder
+        placeholder = document.createElement('div');
+        placeholder.style.cssText = `height:${rect.height}px;border:2px dashed var(--mint-dark);
+            border-radius:var(--radius-sm);background:var(--mint-light);`;
+        el.insertAdjacentElement('beforebegin', placeholder);
+        el.style.display = 'none';
+    }
+
+    function moveDrag(e) {
+        if (!ghost) return;
+        e.preventDefault();
+        const touch = e.touches ? e.touches[0] : e;
+        ghost.style.left = (touch.clientX - offsetX) + 'px';
+        ghost.style.top  = (touch.clientY - offsetY) + 'px';
+
+        const col = getItemsColAt(touch.clientX, touch.clientY);
+        document.querySelectorAll('.cat-column').forEach(c => c.classList.remove('cat-drop-zone'));
+        if (!col) return;
+        col.closest('.cat-column').classList.add('cat-drop-zone');
+
+        // placeholder를 가장 가까운 아이템 앞에 삽입
+        const items = [...col.querySelectorAll('.cat-item')].filter(i => i.style.display !== 'none');
+        let placed = false;
+        for (const item of items) {
+            const r = item.getBoundingClientRect();
+            if (touch.clientY < r.top + r.height / 2) {
+                col.insertBefore(placeholder, item);
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) col.appendChild(placeholder);
+    }
+
+    function endDrag(e) {
+        if (!ghost) return;
+        document.querySelectorAll('.cat-column').forEach(c => c.classList.remove('cat-drop-zone'));
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
+        const col = getItemsColAt(touch.clientX, touch.clientY);
+        const targetCat = col ? col.dataset.cat : null;
+
+        ghost.remove(); ghost = null;
+        const orig = document.querySelector(`.cat-item[data-id="${dragId}"]`);
+        if (orig) orig.style.display = '';
+        if (placeholder) { placeholder.remove(); placeholder = null; }
+
+        if (targetCat && dragId) {
+            products.updateCategory(dragId, targetCat);
+            loadAll();
+            renderCategoryBoard();
+        }
+        dragId = null;
+    }
+
+    document.querySelectorAll('.cat-item').forEach(el => {
+        // 터치
+        el.addEventListener('touchstart', e => startDrag(e, el), { passive: false });
+        // 마우스
+        el.addEventListener('mousedown', e => {
+            startDrag(e, el);
+            const mm = e2 => moveDrag(e2);
+            const mu = e2 => { endDrag(e2); document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
+            document.addEventListener('mousemove', mm);
+            document.addEventListener('mouseup', mu);
+        });
+    });
+
+    document.addEventListener('touchmove', moveDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+}
+
+window.handleDrop = () => {}; // 레거시 호환용
 
 function addCategory() {
     const name = document.getElementById('new-cat-name').value.trim();
