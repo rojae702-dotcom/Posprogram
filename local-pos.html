@@ -334,7 +334,11 @@ function renderCategoryNav(cats) {
             nav.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const cat = btn.dataset.cat;
-            const filtered = cat === '전체' ? allProducts : allProducts.filter(p => p.category === cat);
+            // 다중 카테고리 호환 필터
+            const filtered = cat === '전체' ? allProducts : allProducts.filter(p => {
+                const cats = Array.isArray(p.categories) ? p.categories : (p.category ? [p.category] : []);
+                return cats.includes(cat);
+            });
             renderProducts(filtered);
         });
     });
