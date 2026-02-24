@@ -134,7 +134,7 @@
 <body>
 
 <header class="top-bar">
-    <button class="btn btn-ghost" onclick="location.href='local-pos.html'">← POS 화면</button>
+    <button class="btn btn-ghost" onclick="location.href='./local-shops.html'">🏪 부스 목록</button><button class="btn btn-ghost" onclick="location.href='local-pos.html?shopId='+shopId">← POS 화면</button>
     <div style="display:flex; align-items:center; gap:8px;">
         <input type="text" id="shop-name-input" class="shop-name-input" placeholder="마켓 이름">
         <button id="update-shop-name-btn" class="btn btn-outline btn-sm">저장</button>
@@ -247,22 +247,27 @@
 </div>
 
 <script type="module">
-import { shopName, categories, products, sales } from './local-storage.js';
+import { shops, categories, products, sales, resetAll, getShopId } from './local-storage.js';
 
+const shopId = getShopId();
 let allProducts = [];
 let allCategories = [];
 
+// shopId 없으면 목록으로
+if (!shopId) { location.href = './local-shops.html'; }
+
 // ── 초기화 ──
 function init() {
-    categories.init();
-    document.getElementById('shop-name-input').value = shopName.get();
+    categories.init(shopId);
+    const shop = shops.get(shopId);
+    document.getElementById('shop-name-input').value = shop?.name || '';
     loadAll();
     bindEvents();
 }
 
 function loadAll() {
-    allProducts   = products.list();
-    allCategories = categories.list();
+    allProducts   = products.list(shopId);
+    allCategories = categories.list(shopId);
     renderFilterTabs();
     renderCategorySelects();
     renderProductList(allProducts);
@@ -273,7 +278,7 @@ function bindEvents() {
     document.getElementById('update-shop-name-btn').onclick = () => {
         const name = document.getElementById('shop-name-input').value.trim();
         if (!name) return alert('이름을 입력해주세요.');
-        shopName.set(name);
+        shops.rename(shopId, name);
         showToast('마켓 이름이 변경되었습니다 ✓');
     };
 
@@ -281,7 +286,7 @@ function bindEvents() {
     document.getElementById('export-csv-btn').onclick = () => {
         const start = document.getElementById('start-date').value;
         const end   = document.getElementById('end-date').value;
-        sales.exportCSV(start, end);
+        sales.exportCSV(shopId, start, end, shops.get(shopId)?.name || 'YulPOS');
     };
 
     // PDF 내보내기
@@ -386,7 +391,7 @@ async function saveProduct() {
 
     try {
         const file = document.getElementById('new-img-file').files[0];
-        await products.add({
+        await products.add(shopId, {
             name,
             category: document.getElementById('new-category').value,
             price,
@@ -412,7 +417,7 @@ function resetAddForm() {
 
 // ── 상품 수정 ──
 window.openEdit = (id) => {
-    const p = products.get(id);
+    const p = products.get(shopId, id);
     if (!p) return;
     document.getElementById('edit-id').value = p.id;
     document.getElementById('edit-name').value = p.name;
@@ -438,7 +443,7 @@ async function updateProduct() {
     btn.disabled = true; btn.textContent = '저장 중...';
 
     try {
-        await products.update(id, {
+        await products.update(shopId, id, {
             name:     document.getElementById('edit-name').value.trim(),
             category: document.getElementById('edit-category').value,
             price:    document.getElementById('edit-price').value,
@@ -458,7 +463,7 @@ async function updateProduct() {
 async function deleteProduct() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     const id = document.getElementById('edit-id').value;
-    products.remove(id);
+    products.remove(shopId, id);
     closeModal('modal-edit');
     loadAll();
     showToast('상품이 삭제되었습니다.');
@@ -467,7 +472,7 @@ async function deleteProduct() {
 // ── 카테고리 관리 ──
 function renderCategoryBoard() {
     const board = document.getElementById('cat-board');
-    const prods = products.list();
+    const prods = products.list(shopId);
     board.innerHTML = allCategories.map(cat => `
         <div class="cat-column" data-cat="${cat.name}">
             <div class="cat-column-header">
@@ -576,7 +581,7 @@ function initTouchDrag() {
         if (placeholder) { placeholder.remove(); placeholder = null; }
 
         if (targetCat && dragId) {
-            products.updateCategory(dragId, targetCat);
+            products.updateCategory(shopId, dragId, targetCat);
             loadAll();
             renderCategoryBoard();
         }
@@ -605,7 +610,7 @@ window.handleDrop = () => {}; // 레거시 호환용
 function addCategory() {
     const name = document.getElementById('new-cat-name').value.trim();
     if (!name) return alert('카테고리명을 입력해주세요.');
-    const result = categories.add(name);
+    const result = categories.add(shopId, name);
     if (!result) return alert('이미 존재하는 카테고리입니다.');
     document.getElementById('new-cat-name').value = '';
     loadAll();
@@ -613,10 +618,10 @@ function addCategory() {
 }
 
 window.removeCat = (id, name) => {
-    const inUse = products.list().some(p => p.category === name);
+    const inUse = products.list(shopId).some(p => p.category === name);
     if (inUse) return alert(`'${name}' 카테고리에 상품이 있어 삭제할 수 없습니다.`);
     if (!confirm(`'${name}' 카테고리를 삭제하시겠습니까?`)) return;
-    categories.remove(id);
+    categories.remove(shopId, id);
     loadAll();
     renderCategoryBoard();
 };
@@ -655,7 +660,7 @@ function showToast(msg) {
 
 // ── PDF 매출표 출력 ──
 function exportSalesPDF(startDate, endDate) {
-    const allSales = sales.list();
+    const allSales = sales.list(shopId);
     const filtered = allSales.filter(s => {
         const t = new Date(s.createdAt);
         if (startDate && t < new Date(startDate + 'T00:00:00')) return false;
@@ -676,7 +681,7 @@ function exportSalesPDF(startDate, endDate) {
     const grandTotal  = orderList.reduce((s, g) => s + g.total, 0);
     const cashTotal   = orderList.filter(g => g.method === '현금').reduce((s, g) => s + g.total, 0);
     const transTotal  = orderList.filter(g => g.method !== '현금').reduce((s, g) => s + g.total, 0);
-    const shop        = shopName.get() || 'Yul POS';
+    const shop        = shops.get(shopId)?.name || 'Yul POS';
     const dateLabel   = startDate && endDate ? `${startDate} ~ ${endDate}`
                       : startDate ? `${startDate} 이후` : endDate ? `${endDate} 이전` : '전체 기간';
 
@@ -835,14 +840,14 @@ init();
 
     // 매출만 삭제
     document.getElementById('confirm-reset-sales-btn').onclick = () => {
-        localStorage.removeItem('yul_sales');
+        sales.resetSales(shopId);
         document.getElementById('modal-reset-sales').style.display = 'none';
         showToast('매출 기록이 초기화되었습니다 ✓');
     };
 
     // 전체 삭제
     document.getElementById('confirm-reset-all-btn').onclick = () => {
-        ['yul_products','yul_categories','yul_sales','yul_shop_name'].forEach(k => localStorage.removeItem(k));
+        resetAll(shopId);
         document.getElementById('modal-reset-all').style.display = 'none';
         showToast('전체 초기화 완료. 새 상점을 설정하세요!');
         setTimeout(() => location.reload(), 1500);
