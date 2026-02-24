@@ -237,6 +237,7 @@ export const sales = {
     list: (shopId) => load(keys(shopId).sales),
 
     addOrder: (shopId, cart, paymentMethod) => {
+        // ── 1) 매출 기록 저장 ──
         const items = load(keys(shopId).sales);
         const orderId = generateId();
         const now = new Date().toISOString();
@@ -250,6 +251,21 @@ export const sales = {
         }));
         items.push(...records);
         save(keys(shopId).sales, items);
+
+        // ── 2) 재고 차감 ──
+        const prods = load(keys(shopId).products);
+        cart.forEach(cartItem => {
+            const idx = prods.findIndex(p => p.id === cartItem.id);
+            if (idx === -1) return;
+            const p = prods[idx];
+            // stock이 null/undefined이면 무제한 재고 → 차감 안 함
+            if (p.stock === null || p.stock === undefined) return;
+            p.stock = Math.max(0, Number(p.stock) - cartItem.quantity);
+            // 재고 0 되면 자동 품절 처리
+            if (p.stock === 0) p.status = '품절';
+        });
+        save(keys(shopId).products, prods);
+
         return orderId;
     },
 
