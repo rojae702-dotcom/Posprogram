@@ -345,7 +345,8 @@ function openCopyModal(id, name) {
 function copyShop() {
     const name = document.getElementById('copy-shop-name').value.trim();
     if (!name) { alert('새 부스 이름을 입력해주세요.'); return; }
-    shops.copy(copySourceId, name);
+    const result = shops.copy(copySourceId, name);
+    if (!result) { alert('복사에 실패했습니다. 다시 시도해주세요.'); return; }
     closeModal('modal-copy');
     renderShops();
     showToast('📋 \'' + name + '\' 부스로 복사됐어요');
