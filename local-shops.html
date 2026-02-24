@@ -88,7 +88,7 @@
 
 <header class="top-bar">
     <div class="top-bar-title">🏪 Yul POS</div>
-    <button class="btn btn-primary" onclick="openAddModal()">＋ 부스 추가</button>
+    <button class="btn btn-primary" id="header-add-btn">＋ 부스 추가</button>
 </header>
 
 <main class="main">
@@ -104,8 +104,8 @@
         <div class="modal-title">🏪 새 부스 추가</div>
         <input type="text" id="new-shop-name" class="form-input" placeholder="부스 이름 (예: 봄날마켓 A)">
         <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('modal-add')">취소</button>
-            <button class="btn btn-mint" onclick="addShop()">추가하기</button>
+            <button class="btn btn-ghost" id="modal-cancel-btn">취소</button>
+            <button class="btn btn-mint" id="modal-confirm-btn">추가하기</button>
         </div>
     </div>
 </div>
@@ -121,8 +121,8 @@
             <input type="text" id="delete-confirm-input" class="form-input" placeholder="삭제" style="margin:0;text-align:center;">
         </div>
         <div class="modal-footer" style="justify-content:center;">
-            <button class="btn btn-ghost" onclick="closeModal('modal-delete'); document.getElementById('delete-confirm-input').value='';">취소</button>
-            <button id="confirm-delete-btn" class="btn btn-danger" disabled style="opacity:.4" onclick="confirmDelete()">부스 삭제</button>
+            <button class="btn btn-ghost" id="delete-cancel-btn">취소</button>
+            <button id="confirm-delete-btn" class="btn btn-danger" disabled style="opacity:.4">부스 삭제</button>
         </div>
     </div>
 </div>
@@ -132,22 +132,66 @@ import { shops, sales } from './local-storage.js';
 
 let deleteTargetId = null;
 
+// ── 페이지 이동 (module 밖에서도 호출되므로 window에 노출) ──
+function goTo(page, shopId) {
+    location.href = page + '?shopId=' + shopId;
+}
+
+// ── 초기화 ──
 function init() {
     renderShops();
+
+    // 헤더 부스 추가 버튼
+    document.getElementById('header-add-btn').addEventListener('click', openAddModal);
+
+    // 모달 버튼 이벤트
+    document.getElementById('modal-cancel-btn').addEventListener('click', () => closeModal('modal-add'));
+    document.getElementById('modal-confirm-btn').addEventListener('click', addShop);
+
+    // 삭제 모달
+    document.getElementById('delete-cancel-btn').addEventListener('click', () => {
+        closeModal('modal-delete');
+        document.getElementById('delete-confirm-input').value = '';
+    });
+    document.getElementById('confirm-delete-btn').addEventListener('click', confirmDelete);
+
+    document.getElementById('delete-confirm-input').addEventListener('input', function () {
+        const ok = this.value.trim() === '삭제';
+        const btn = document.getElementById('confirm-delete-btn');
+        btn.disabled = !ok;
+        btn.style.opacity = ok ? '1' : '.4';
+    });
+
+    // 모달 바깥 클릭 닫기
+    document.getElementById('modal-add').addEventListener('click', function (e) {
+        if (e.target === this) closeModal('modal-add');
+    });
+    document.getElementById('modal-delete').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeModal('modal-delete');
+            document.getElementById('delete-confirm-input').value = '';
+        }
+    });
+
+    // Enter 키로 부스 추가
+    document.getElementById('new-shop-name').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addShop();
+    });
 }
 
 function renderShops() {
     const list = shops.list();
     const grid = document.getElementById('shop-grid');
-    document.getElementById('shop-count').textContent = `부스 목록 (${list.length}개)`;
+    document.getElementById('shop-count').textContent = '부스 목록 (' + list.length + '개)';
 
     if (list.length === 0) {
         grid.innerHTML = `
             <div class="empty-state" style="grid-column:1/-1;">
                 <div class="empty-icon">🏪</div>
                 <div class="empty-text">아직 부스가 없어요.<br>상단 버튼으로 첫 부스를 추가해보세요!</div>
-                <button class="btn btn-primary" onclick="window.openAddModal()">＋ 부스 추가</button>
+                <button class="btn btn-primary" id="empty-add-btn">＋ 부스 추가</button>
             </div>`;
+        document.getElementById('empty-add-btn').addEventListener('click', openAddModal);
         return;
     }
 
@@ -163,47 +207,53 @@ function renderShops() {
                     <div class="shop-name" id="name-${shop.id}">${shop.name}</div>
                     <div class="shop-date">생성일: ${createdDate}</div>
                 </div>
-                <button onclick="window.startRename('${shop.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:18px;padding:2px 6px;" title="이름 변경">✎</button>
+                <button data-rename="${shop.id}" style="background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:18px;padding:2px 6px;" title="이름 변경">✎</button>
             </div>
             <div class="shop-stats">
                 <span class="stat-pill highlight">💰 ${totalSales.toLocaleString()}원</span>
                 <span class="stat-pill">🧾 ${orderCount}건</span>
             </div>
             <div class="shop-actions">
-                <button class="shop-btn shop-btn-pos" onclick="goTo('local-pos.html', '${shop.id}')">POS 열기</button>
-                <button class="shop-btn shop-btn-mgmt" onclick="goTo('local-inventory.html', '${shop.id}')">상품 관리</button>
-                <button onclick="window.openDeleteModal('${shop.id}', '${shop.name}')" style="background:none;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;cursor:pointer;color:var(--text-sub);font-size:13px;transition:all .15s;" title="부스 삭제">🗑</button>
+                <button class="shop-btn shop-btn-pos" data-goto-pos="${shop.id}">POS 열기</button>
+                <button class="shop-btn shop-btn-mgmt" data-goto-inv="${shop.id}">상품 관리</button>
+                <button data-delete-id="${shop.id}" data-delete-name="${shop.name.replace(/"/g,'&quot;')}" style="background:none;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;cursor:pointer;color:var(--text-sub);font-size:13px;transition:all .15s;" title="부스 삭제">🗑</button>
             </div>
         </div>`;
     }).join('');
-}
 
-function goTo(page, shopId) {
-    location.href = `${page}?shopId=${shopId}`;
+    // 이벤트 위임으로 카드 내 버튼 처리 (Safari 완벽 호환)
+    grid.querySelectorAll('[data-goto-pos]').forEach(btn => {
+        btn.addEventListener('click', () => goTo('local-pos.html', btn.dataset.gotoPos));
+    });
+    grid.querySelectorAll('[data-goto-inv]').forEach(btn => {
+        btn.addEventListener('click', () => goTo('local-inventory.html', btn.dataset.gotoInv));
+    });
+    grid.querySelectorAll('[data-rename]').forEach(btn => {
+        btn.addEventListener('click', () => startRename(btn.dataset.rename));
+    });
+    grid.querySelectorAll('[data-delete-id]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal(btn.dataset.deleteId, btn.dataset.deleteName));
+    });
 }
 
 // ── 부스 추가 ──
-window.openAddModal = () => {
+function openAddModal() {
     document.getElementById('new-shop-name').value = '';
     document.getElementById('modal-add').classList.add('open');
     setTimeout(() => document.getElementById('new-shop-name').focus(), 100);
-};
+}
 
-window.addShop = () => {
+function addShop() {
     const name = document.getElementById('new-shop-name').value.trim();
-    if (!name) return alert('부스 이름을 입력해주세요.');
+    if (!name) { alert('부스 이름을 입력해주세요.'); return; }
     shops.add(name);
     closeModal('modal-add');
     renderShops();
-    showToast(`'${name}' 부스가 추가됐어요 ✓`);
-};
-
-document.getElementById('new-shop-name').addEventListener('keydown', e => {
-    if (e.key === 'Enter') window.addShop();
-});
+    showToast('\'' + name + '\' 부스가 추가됐어요 ✓');
+}
 
 // ── 이름 수정 ──
-window.startRename = (id) => {
+function startRename(id) {
     const nameEl = document.getElementById('name-' + id);
     const current = nameEl.textContent;
     const input = document.createElement('input');
@@ -226,45 +276,33 @@ window.startRename = (id) => {
     };
     input.addEventListener('blur', finish);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
-};
+}
 
 // ── 부스 삭제 ──
-window.openDeleteModal = (id, name) => {
+function openDeleteModal(id, name) {
     deleteTargetId = id;
     document.getElementById('delete-desc').innerHTML =
-        `<b>${name}</b> 부스의 모든 데이터가 삭제됩니다.<br>상품, 카테고리, 매출 기록 모두 사라지며<br><span style="color:var(--danger);font-weight:600;">되돌릴 수 없습니다.</span>`;
+        '<b>' + name + '</b> 부스의 모든 데이터가 삭제됩니다.<br>상품, 카테고리, 매출 기록 모두 사라지며<br><span style="color:var(--danger);font-weight:600;">되돌릴 수 없습니다.</span>';
     document.getElementById('delete-confirm-input').value = '';
-    document.getElementById('confirm-delete-btn').disabled = true;
-    document.getElementById('confirm-delete-btn').style.opacity = '.4';
-    document.getElementById('modal-delete').classList.add('open');
-};
-
-document.getElementById('delete-confirm-input').addEventListener('input', function() {
-    const ok = this.value.trim() === '삭제';
     const btn = document.getElementById('confirm-delete-btn');
-    btn.disabled = !ok;
-    btn.style.opacity = ok ? '1' : '.4';
-});
+    btn.disabled = true;
+    btn.style.opacity = '.4';
+    document.getElementById('modal-delete').classList.add('open');
+}
 
-window.confirmDelete = () => {
+function confirmDelete() {
     if (!deleteTargetId) return;
-    const shop = shops.get(deleteTargetId);
     shops.remove(deleteTargetId);
     deleteTargetId = null;
     closeModal('modal-delete');
     renderShops();
-    showToast(`부스가 삭제됐어요.`);
-};
+    showToast('부스가 삭제됐어요.');
+}
 
 // ── 유틸 ──
-window.closeModal = (id) => document.getElementById(id).classList.remove('open');
-
-// 모달 바깥 클릭
-['modal-add', 'modal-delete'].forEach(id => {
-    document.getElementById(id).addEventListener('click', function(e) {
-        if (e.target === this) closeModal(id);
-    });
-});
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
 
 function showToast(msg) {
     const t = document.createElement('div');
