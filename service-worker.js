@@ -4,6 +4,7 @@ const CACHE_NAME = 'yul-pos-local-v2';
 const ASSETS = [
     '/Posprogram/',
     '/Posprogram/index.html',
+    '/Posprogram/local-shops.html',
     '/Posprogram/local-pos.html',
     '/Posprogram/local-inventory.html',
     '/Posprogram/local-storage.js',
