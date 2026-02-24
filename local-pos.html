@@ -184,7 +184,8 @@
 <body>
 
 <header class="top-bar">
-    <button class="btn btn-ghost" onclick="location.href='local-inventory.html'">상품 관리</button>
+    <button class="btn btn-ghost" onclick="location.href='./local-shops.html'">🏪 부스 목록</button>
+    <button class="btn btn-ghost" onclick="location.href='local-inventory.html?shopId='+shopId">상품 관리</button>
     <span id="shop-name-display" class="top-bar-title"></span>
     <div style="width:80px"></div>
 </header>
@@ -248,22 +249,27 @@
 </div>
 
 <script type="module">
-import { shopName, categories, products, sales } from './local-storage.js';
+import { shops, categories, products, sales, getShopId } from './local-storage.js';
 
+const shopId = getShopId();
 let cart = [];
 let allProducts = [];
 
+// shopId 없으면 목록으로
+if (!shopId) { location.href = './local-shops.html'; }
+
 // ── 초기화 ──
 function init() {
-    document.getElementById('shop-name-display').textContent = shopName.get() || 'Yul POS';
-    categories.init();
+    const shop = shops.get(shopId);
+    document.getElementById('shop-name-display').textContent = shop?.name || 'Yul POS';
+    categories.init(shopId);
     loadProducts();
     renderNonSaleLog();
 }
 
 function loadProducts() {
-    allProducts = products.list();
-    const cats = ['전체', ...categories.list().map(c => c.name)];
+    allProducts = products.list(shopId);
+    const cats = ['전체', ...categories.list(shopId).map(c => c.name)];
     renderCategoryNav(cats);
     renderProducts(allProducts);
 }
@@ -452,7 +458,7 @@ document.getElementById('modal-nonsale').addEventListener('click', function(e) {
 window.handlePayment = (method) => {
     if (cart.length === 0) return alert('담긴 상품이 없습니다.');
     const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
-    sales.addOrder(cart, method);
+    sales.addOrder(shopId, cart, method);
     alert(`총 ${total.toLocaleString()}원 ${method} 결제 완료!`);
     cart = [];
     renderCart();
