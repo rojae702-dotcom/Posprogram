@@ -6,6 +6,10 @@
  *   yul_{shopId}_products    → 부스별 상품
  *   yul_{shopId}_categories  → 부스별 카테고리
  *   yul_{shopId}_sales       → 부스별 매출
+ *
+ * 다중 카테고리:
+ *   상품에 categories: string[] 배열로 저장.
+ *   구버전(category: string) 데이터는 읽을 때 자동 변환.
  */
 
 // ── 유틸 ──
@@ -18,10 +22,6 @@ function load(key) {
     catch { return []; }
 }
 
-function loadStr(key) {
-    return localStorage.getItem(key) || '';
-}
-
 function save(key, data) {
     localStorage.setItem(key, JSON.stringify(data));
 }
@@ -29,6 +29,15 @@ function save(key, data) {
 // ── URL에서 shopId 추출 ──
 export function getShopId() {
     return new URLSearchParams(location.search).get('shopId') || '';
+}
+
+// ── 구버전 상품 데이터 호환 변환 ──
+// category(단일 string) → categories(string 배열)
+function migrateProduct(p) {
+    if (!Array.isArray(p.categories)) {
+        p.categories = p.category ? [p.category] : ['일반'];
+    }
+    return p;
 }
 
 // ── 부스 목록 ──
@@ -48,7 +57,6 @@ export const shops = {
     remove: (id) => {
         const list = load('yul_shops').filter(s => s.id !== id);
         save('yul_shops', list);
-        // 해당 부스 데이터 전체 삭제
         ['products', 'categories', 'sales'].forEach(k => {
             localStorage.removeItem(`yul_${id}_${k}`);
         });
@@ -99,16 +107,26 @@ export const categories = {
 
 // ── 상품 ──
 export const products = {
-    list: (shopId) => load(keys(shopId).products),
+    // 구버전 데이터 자동 마이그레이션 포함
+    list: (shopId) => load(keys(shopId).products).map(migrateProduct),
 
-    get: (shopId, id) => load(keys(shopId).products).find(p => p.id === id) || null,
+    get: (shopId, id) => {
+        const p = load(keys(shopId).products).find(p => p.id === id);
+        return p ? migrateProduct(p) : null;
+    },
 
     add: async (shopId, data, imageFile = null) => {
         const items = load(keys(shopId).products);
+        // categories 배열로 저장 (단일값으로 넘어와도 배열로 정규화)
+        const cats = Array.isArray(data.categories)
+            ? data.categories
+            : (data.category ? [data.category] : ['일반']);
+
         const product = {
             id: generateId(),
             name: data.name,
-            category: data.category,
+            categories: cats,          // ★ 배열
+            category: cats[0] || '일반', // 구버전 호환용 첫 번째 값 유지
             price: Number(data.price),
             stock: data.stock !== '' && data.stock !== null ? Number(data.stock) : null,
             status: '판매중',
@@ -125,13 +143,19 @@ export const products = {
         const items = load(keys(shopId).products);
         const idx = items.findIndex(p => p.id === id);
         if (idx === -1) return null;
+
+        const cats = Array.isArray(data.categories)
+            ? data.categories
+            : (data.category ? [data.category] : ['일반']);
+
         items[idx] = {
             ...items[idx],
-            name: data.name,
-            category: data.category,
-            price: Number(data.price),
-            stock: data.stock !== '' && data.stock !== null ? Number(data.stock) : null,
-            status: data.status,
+            name:       data.name,
+            categories: cats,
+            category:   cats[0] || '일반', // 구버전 호환
+            price:      Number(data.price),
+            stock:      data.stock !== '' && data.stock !== null ? Number(data.stock) : null,
+            status:     data.status,
         };
         if (imageFile) items[idx].imageUrl = await fileToBase64(imageFile);
         save(keys(shopId).products, items);
@@ -143,10 +167,26 @@ export const products = {
         save(keys(shopId).products, items);
     },
 
+    // 카테고리 보드 드래그용 — 단일 카테고리 교체 (구버전 호환)
     updateCategory: (shopId, id, category) => {
         const items = load(keys(shopId).products);
         const idx = items.findIndex(p => p.id === id);
-        if (idx !== -1) { items[idx].category = category; save(keys(shopId).products, items); }
+        if (idx !== -1) {
+            items[idx].category   = category;
+            items[idx].categories = [category];
+            save(keys(shopId).products, items);
+        }
+    },
+
+    // ★ 다중 카테고리 배열 직접 업데이트
+    updateCategories: (shopId, id, categoriesArray) => {
+        const items = load(keys(shopId).products);
+        const idx = items.findIndex(p => p.id === id);
+        if (idx !== -1) {
+            items[idx].categories = categoriesArray;
+            items[idx].category   = categoriesArray[0] || '일반'; // 구버전 호환
+            save(keys(shopId).products, items);
+        }
     },
 };
 
@@ -194,6 +234,7 @@ export const sales = {
 
     exportCSV: (shopId, startDate, endDate, shopNameStr) => {
         const groups = sales.grouped(shopId, startDate, endDate);
+        if (groups.length === 0) { alert('해당 기간의 매출 내역이 없습니다.'); return; }
         const rows = [['주문시간', '주문ID', '상품명', '수량', '단가', '소계', '결제수단']];
         groups.forEach(order => {
             order.items.forEach(item => {
@@ -209,12 +250,11 @@ export const sales = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${shopNameStr}_매출내역_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.csv`;
+        a.download = shopNameStr + '_매출내역_' + new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','') + '.csv';
         a.click();
         URL.revokeObjectURL(url);
     },
 
-    // 매출만 초기화
     resetSales: (shopId) => localStorage.removeItem(keys(shopId).sales),
 };
 
