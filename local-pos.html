@@ -433,6 +433,8 @@ function handlePayment(method) {
     alert('총 ' + total.toLocaleString() + '원 ' + method + ' 결제 완료!');
     cart = [];
     renderCart();
+    // 재고 차감 및 품절 상태 즉시 반영
+    loadProducts();
 }
 
 // ── 판매 외 기록 ──
