@@ -48,7 +48,7 @@
         .btn-mint:hover { background: var(--mint-dark); }
         .btn-sm { padding: 5px 10px; font-size: 12px; }
         /* 헤더 */
-        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 56px; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 56px; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; position: relative; }
         .top-bar-title { font-size: 1.1rem; font-weight: 700; }
         /* 스크롤바 */
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -185,10 +185,8 @@
 
 <header class="top-bar">
     <button class="btn btn-ghost" id="btn-shops">🏪 부스 목록</button>
-    <div style="display:flex; align-items:center; gap:12px;">
-        <span id="shop-name-display" class="top-bar-title"></span>
-        <button class="btn btn-ghost" id="btn-inventory">상품 관리</button>
-    </div>
+    <span id="shop-name-display" class="top-bar-title" style="position:absolute; left:50%; transform:translateX(-50%);"></span>
+    <button class="btn btn-ghost" id="btn-inventory">상품 관리</button>
 </header>
 
 <div class="main-container">
