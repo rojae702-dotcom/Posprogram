@@ -730,8 +730,16 @@ thead th:nth-child(4){text-align:right;width:28%;}
 .isub{text-align:right;font-weight:600;}
 .total-row td{background:#fdff94;padding:12px 14px;font-weight:700;font-size:15px;border-top:2px solid #1e2329;}
 .footer{margin-top:20px;text-align:center;font-size:11px;color:#aaa;}
-@media print{body{padding:16px;}}
+.action-bar{display:flex;gap:10px;justify-content:center;margin-bottom:24px;}
+.action-btn{padding:10px 28px;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+.btn-print{background:#fdff94;color:#1e2329;}
+.btn-close{background:#f4f6f8;color:#6b7684;border:1.5px solid #e2e6ea;}
+@media print{.action-bar{display:none;}body{padding:16px;}}
 </style></head><body>
+<div class="action-bar">
+  <button class="action-btn btn-print" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+  <button class="action-btn btn-close" onclick="window.close()">✕ 닫기</button>
+</div>
 <div class="hdr"><h1>${shop}</h1><p>매출 내역서 · ${dateLabel} · 총 ${orderList.length}건</p></div>
 <div class="summary">
   <div class="sbox hi"><div class="slabel">총 매출</div><div class="sval">${fmt(grandTotal)}</div></div>
@@ -746,7 +754,7 @@ thead th:nth-child(4){text-align:right;width:28%;}
   </tbody>
 </table>
 <div class="footer">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
-<script>window.onload=()=>window.print();<\/script>
+<script>/* 자동 인쇄 없음 — 버튼으로 실행 */<\/script>
 </body></html>`;
 
     const win = window.open('', '_blank');
