@@ -503,15 +503,20 @@ function renderFilterTabs() {
     });
 }
 
+// ── 카테고리 배열 안전하게 읽기 ──
+function getProductCats(p) {
+    if (Array.isArray(p.categories) && p.categories.length > 0) return p.categories;
+    if (p.category && typeof p.category === 'string' && p.category.trim()) return [p.category];
+    return [];
+}
+
 function filterByCategory(cat) {
     document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
-    // 다중 카테고리: categories 배열에 해당 카테고리가 포함된 상품 필터
+    // 전체: 모든 상품 포함 (카테고리 미지정 상품도 표시)
+    // 특정 카테고리: 해당 카테고리를 하나라도 포함한 상품만
     const filtered = cat === '전체'
         ? allProducts
-        : allProducts.filter(p => {
-            const cats = Array.isArray(p.categories) ? p.categories : (p.category ? [p.category] : []);
-            return cats.includes(cat);
-        });
+        : allProducts.filter(p => getProductCats(p).includes(cat));
     renderProductList(filtered);
 }
 
@@ -526,7 +531,7 @@ function renderProductList(list) {
         const isOut = p.status === '품절';
         const stockDisplay = p.stock !== null && p.stock !== undefined ? p.stock : '-';
         // 다중 카테고리 표시 (구버전 호환)
-        const catArray = Array.isArray(p.categories) ? p.categories : (p.category ? [p.category] : ['일반']);
+        const catArray = getProductCats(p).length > 0 ? getProductCats(p) : ['미지정'];
         const catBadges = catArray.map(c => `<span class="cat-tag">${c}</span>`).join('');
         return `
         <div class="product-row">
