@@ -10,9 +10,9 @@
     <style>
         /* ── 공통 변수 ── */
         :root {
-            --mint:        #a0f3ef;
-            --mint-dark:   #7de8e3;
-            --mint-light:  #e8fffe;
+            --mint:        #fdff94;
+            --mint-dark:   #f5f700;
+            --mint-light:  #feffd4;
             --yellow:      #ffe082;
             --yellow-dark: #ffd54f;
             --bg:          #f4f6f8;
@@ -36,7 +36,8 @@
             font-family: 'Noto Sans KR', sans-serif;
             background: var(--bg); color: var(--text);
             font-size: 14px; -webkit-font-smoothing: antialiased;
-            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+            height: 100dvh; /* dvh: 주소창 제외한 실제 화면 높이 */
+            overflow: hidden; display: flex; flex-direction: column;
         }
         /* 버튼 */
         .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all .15s; white-space: nowrap; }
@@ -58,9 +59,9 @@
             min-height: 0;
         }
 
-        /* 좌측 상품 */
+        /* 좌측 상품 — 비율 5 */
         .product-section {
-            flex: 2.2; display: flex; flex-direction: column;
+            flex: 5; display: flex; flex-direction: column;
             gap: 12px; min-width: 0; min-height: 0; overflow: hidden;
         }
 
@@ -109,9 +110,9 @@
         .product-name { font-size: 0.82rem; color: var(--text-sub); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .product-price { font-size: 0.9rem; font-weight: 700; color: var(--text); }
 
-        /* 우측 주문 */
+        /* 우측 주문 — 비율 3 */
         .cart-section {
-            width: 280px; flex-shrink: 0; background: var(--white);
+            flex: 3; flex-shrink: 0; background: var(--white);
             border-radius: var(--radius); padding: 20px 18px 18px;
             display: flex; flex-direction: column;
             box-shadow: var(--shadow-md); border: 1px solid var(--border);
