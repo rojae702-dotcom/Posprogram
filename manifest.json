@@ -1,6 +1,6 @@
 {
-    "name": "Yul POS",
-    "short_name": "Yul POS",
+    "name": "POS",
+    "short_name": "POS",
     "description": "행사용 POS 관리 시스템",
     "start_url": "/Posprogram/index.html",
     "scope": "/Posprogram/",
