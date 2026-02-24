@@ -69,6 +69,29 @@ export const shops = {
     },
 
     get: (id) => load('yul_shops').find(s => s.id === id) || null,
+
+    // ★ 부스 복사 — 상품·카테고리 복제, 매출은 초기화
+    copy: (sourceId, newName) => {
+        const list = load('yul_shops');
+        const newShop = { id: generateId(), name: newName, createdAt: new Date().toISOString() };
+        list.push(newShop);
+        save('yul_shops', list);
+
+        // 카테고리 복사 (id만 새로 발급)
+        const srcCats = JSON.parse(localStorage.getItem(`yul_${sourceId}_categories`) || '[]');
+        const newCats = srcCats.map(c => ({ ...c, id: generateId() }));
+        localStorage.setItem(`yul_${newShop.id}_categories`, JSON.stringify(newCats));
+
+        // 상품 복사 (id만 새로 발급, 매출 제외)
+        const srcProds = JSON.parse(localStorage.getItem(`yul_${sourceId}_products`) || '[]');
+        const newProds = srcProds.map(p => ({ ...p, id: generateId(), createdAt: new Date().toISOString() }));
+        localStorage.setItem(`yul_${newShop.id}_products`, JSON.stringify(newProds));
+
+        // 매출은 빈 배열로
+        localStorage.setItem(`yul_${newShop.id}_sales`, '[]');
+
+        return newShop;
+    },
 };
 
 // ── shopId 기반 키 생성 ──
