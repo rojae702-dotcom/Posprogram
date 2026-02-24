@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Yul POS — 부스 목록</title>
+    <title>:P — 부스 목록</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,73 +13,129 @@
             --bg: #f4f6f8; --white: #ffffff; --border: #e2e6ea;
             --text: #1e2329; --text-sub: #6b7684;
             --danger: #ef4444; --danger-light: #fee2e2;
+            --info: #3b82f6; --info-light: #dbeafe;
             --radius: 12px; --radius-sm: 8px; --radius-lg: 16px;
             --shadow: 0 2px 12px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.12);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100dvh; }
 
-        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 56px; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; }
-        .top-bar-title { font-size: 1.1rem; font-weight: 700; }
+        /* ── 헤더 ── */
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 24px; height: 60px;
+            background: var(--text);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .top-bar-logo { font-size: 1.5rem; font-weight: 700; color: var(--mint); letter-spacing: -0.5px; user-select: none; }
 
-        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all .15s; }
-        .btn-primary { background: #4f7ef5; color: #fff; } .btn-primary:hover { background: #3b6de0; }
-        .btn-mint { background: var(--mint); color: var(--text); } .btn-mint:hover { background: var(--mint-dark); }
-        .btn-ghost { background: var(--bg); color: var(--text-sub); } .btn-ghost:hover { background: var(--border); }
-        .btn-danger { background: var(--danger); color: #fff; } .btn-danger:hover { background: #dc2626; }
+        /* ── 버튼 ── */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all .15s; white-space: nowrap; }
+        .btn:active { transform: scale(.97); }
+        .btn-header  { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-header:hover { background: rgba(255,255,255,0.22); }
+        .btn-mint    { background: var(--mint); color: var(--text); } .btn-mint:hover { background: var(--mint-dark); }
+        .btn-ghost   { background: var(--bg); color: var(--text-sub); } .btn-ghost:hover { background: var(--border); }
+        .btn-danger  { background: var(--danger); color: #fff; } .btn-danger:hover { background: #dc2626; }
+        .btn-info    { background: var(--info); color: #fff; } .btn-info:hover { background: #2563eb; }
 
-        .main { padding: 32px 24px; max-width: 900px; margin: 0 auto; }
-
+        /* ── 본문 ── */
+        .main { padding: 32px 24px; max-width: 980px; margin: 0 auto; }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .section-title { font-size: 1rem; font-weight: 700; }
+        .section-title { font-size: 1rem; font-weight: 700; color: var(--text-sub); }
 
-        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        /* ── 카드 그리드 ── */
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
         .shop-card {
             background: var(--white); border: 1.5px solid var(--border);
             border-radius: var(--radius); padding: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-            transition: all .15s; display: flex; flex-direction: column; gap: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            transition: all .15s; display: flex; flex-direction: column; gap: 14px;
         }
         .shop-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); border-color: var(--mint-dark); }
 
-        .shop-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .shop-name { font-size: 1rem; font-weight: 700; }
+        .shop-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+        .shop-name-area { flex: 1; min-width: 0; }
+        .shop-name { font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .shop-date { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
 
-        .shop-stats { display: flex; gap: 8px; }
+        .card-icon-btns { display: flex; gap: 2px; flex-shrink: 0; }
+        .icon-btn {
+            width: 30px; height: 30px; border: none; border-radius: var(--radius-sm);
+            background: transparent; cursor: pointer; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-sub); transition: all .15s;
+        }
+        .icon-btn:hover { background: var(--bg); }
+        .icon-btn.copy:hover { background: var(--info-light); color: var(--info); }
+        .icon-btn.rename:hover { background: var(--mint-light); color: var(--text); }
+
+        .shop-stats { display: flex; gap: 8px; flex-wrap: wrap; }
         .stat-pill { padding: 4px 10px; background: var(--bg); border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--text-sub); }
         .stat-pill.highlight { background: var(--mint-light); color: var(--text); }
 
-        .shop-actions { display: flex; gap: 8px; }
-        .shop-btn { flex: 1; padding: 9px 0; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-weight: 700; font-size: 13px; transition: all .15s; }
-        .shop-btn-pos  { background: var(--mint); color: var(--text); } .shop-btn-pos:hover  { background: var(--mint-dark); }
-        .shop-btn-mgmt { background: var(--bg); color: var(--text-sub); border: 1.5px solid var(--border); } .shop-btn-mgmt:hover { background: var(--border); }
+        /* ── 버튼 2개 레이아웃 ── */
+        .shop-actions { display: flex; gap: 8px; align-items: center; }
+        .shop-btn-open {
+            flex: 1;
+            padding: 11px 0;
+            border: none; border-radius: var(--radius-sm);
+            cursor: pointer; font-family: inherit; font-weight: 700; font-size: 14px;
+            background: var(--mint); color: var(--text);
+            transition: background .15s, transform .1s;
+        }
+        .shop-btn-open:hover { background: var(--mint-dark); }
+        .shop-btn-open:active { transform: scale(.97); }
 
-        .rename-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--mint-dark); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text); background: var(--white); }
+        .shop-btn-delete {
+            flex-shrink: 0; padding: 11px 13px;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            background: none; cursor: pointer; font-size: 15px; line-height: 1;
+            color: var(--text-sub); transition: all .15s;
+        }
+        .shop-btn-delete:hover { background: var(--danger-light); border-color: var(--danger); color: var(--danger); }
+
+        /* ── 이름 인라인 편집 ── */
+        .rename-input {
+            width: 100%; padding: 5px 8px;
+            border: 1.5px solid var(--mint-dark); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text); background: var(--white);
+        }
         .rename-input:focus { outline: none; }
 
+        /* ── 빈 상태 ── */
         .empty-state { text-align: center; padding: 80px 20px; color: var(--text-sub); }
-        .empty-icon { font-size: 3.5rem; margin-bottom: 14px; opacity: .4; }
-        .empty-text { font-size: 0.95rem; margin-bottom: 20px; }
+        .empty-icon  { font-size: 3.5rem; margin-bottom: 14px; opacity: .4; }
+        .empty-text  { font-size: 0.95rem; margin-bottom: 20px; line-height: 1.7; }
 
-        /* 모달 */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; }
+        /* ── 모달 공통 ── */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.open { display: flex; }
-        .modal-box { background: var(--white); padding: 28px; border-radius: var(--radius-lg); width: 100%; max-width: 380px; box-shadow: var(--shadow-md); animation: pop .2s ease; }
+        .modal-box { background: var(--white); padding: 28px; border-radius: var(--radius-lg); width: 100%; max-width: 400px; box-shadow: var(--shadow-md); animation: pop .2s ease; }
         @keyframes pop { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:none; } }
         .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 18px; }
-        .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; color: var(--text); margin-bottom: 16px; }
+        .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; color: var(--text); margin-bottom: 16px; transition: border-color .15s; }
         .form-input:focus { outline: none; border-color: #4f7ef5; }
         .modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+        .form-label-sm { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: .3px; }
 
-        /* 삭제 확인 모달 */
+        /* 복사 모달 */
+        .copy-info-box {
+            font-size: 12px; color: var(--text-sub); margin-bottom: 16px;
+            background: var(--info-light); border: 1px solid #bfdbfe;
+            padding: 10px 14px; border-radius: var(--radius-sm); line-height: 1.7;
+        }
+        .copy-info-box b { color: var(--info); }
+
+        /* 삭제 모달 */
         .danger-modal .modal-box { max-width: 360px; text-align: center; }
-        .danger-icon { font-size: 2.5rem; margin-bottom: 12px; }
-        .danger-desc { font-size: 13px; color: var(--text-sub); line-height: 1.8; margin-bottom: 20px; }
+        .danger-icon  { font-size: 2.5rem; margin-bottom: 12px; }
+        .danger-desc  { font-size: 13px; color: var(--text-sub); line-height: 1.8; margin-bottom: 20px; }
 
-        /* 토스트 */
+        /* ── 토스트 ── */
         .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e2329; color: #fff; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 13px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999; white-space: nowrap; animation: toastIn .2s ease; pointer-events: none; }
         @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
     </style>
@@ -87,8 +143,8 @@
 <body>
 
 <header class="top-bar">
-    <div class="top-bar-title">🏪 Yul POS</div>
-    <button class="btn btn-primary" id="header-add-btn">＋ 부스 추가</button>
+    <div class="top-bar-logo">:P</div>
+    <button class="btn btn-header" id="header-add-btn">＋ 부스 추가</button>
 </header>
 
 <main class="main">
@@ -98,26 +154,46 @@
     <div class="shop-grid" id="shop-grid"></div>
 </main>
 
-<!-- 부스 추가 모달 -->
+<!-- ── 부스 추가 모달 ── -->
 <div id="modal-add" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-title">🏪 새 부스 추가</div>
-        <input type="text" id="new-shop-name" class="form-input" placeholder="부스 이름 (예: 봄날마켓 A)">
+        <label class="form-label-sm">부스 이름</label>
+        <input type="text" id="new-shop-name" class="form-input" placeholder="예: 봄날마켓 A">
         <div class="modal-footer">
-            <button class="btn btn-ghost" id="modal-cancel-btn">취소</button>
-            <button class="btn btn-mint" id="modal-confirm-btn">추가하기</button>
+            <button class="btn btn-ghost" id="modal-add-cancel">취소</button>
+            <button class="btn btn-mint" id="modal-add-confirm">추가하기</button>
         </div>
     </div>
 </div>
 
-<!-- 부스 삭제 확인 모달 -->
+<!-- ── 부스 복사 모달 ── -->
+<div id="modal-copy" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-title">📋 부스 복사</div>
+        <div class="copy-info-box">
+            <b>원본:</b> <span id="copy-source-name"></span><br>
+            상품과 카테고리가 그대로 복사되고, 매출 기록은 새로 시작됩니다.
+        </div>
+        <label class="form-label-sm">새 부스 이름</label>
+        <input type="text" id="copy-shop-name" class="form-input" placeholder="예: 봄날마켓 B">
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="modal-copy-cancel">취소</button>
+            <button class="btn btn-info" id="modal-copy-confirm">복사하기</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── 부스 삭제 확인 모달 ── -->
 <div id="modal-delete" class="modal-overlay danger-modal">
     <div class="modal-box">
         <div class="danger-icon">⚠️</div>
         <div class="modal-title" style="color:var(--danger);">부스 삭제</div>
         <div class="danger-desc" id="delete-desc"></div>
-        <div style="margin:12px 0 16px;">
-            <label style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:7px;">확인을 위해 <b style="color:var(--danger);">삭제</b> 라고 입력하세요</label>
+        <div style="margin:0 0 16px;">
+            <label style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:7px;">
+                확인을 위해 <b style="color:var(--danger);">삭제</b> 라고 입력하세요
+            </label>
             <input type="text" id="delete-confirm-input" class="form-input" placeholder="삭제" style="margin:0;text-align:center;">
         </div>
         <div class="modal-footer" style="justify-content:center;">
@@ -131,30 +207,30 @@
 import { shops, sales } from './local-storage.js';
 
 let deleteTargetId = null;
+let copySourceId   = null;
 
-// ── 페이지 이동 (module 밖에서도 호출되므로 window에 노출) ──
-function goTo(page, shopId) {
-    location.href = page + '?shopId=' + shopId;
-}
-
-// ── 초기화 ──
 function init() {
     renderShops();
 
-    // 헤더 부스 추가 버튼
+    // ── 헤더 버튼 ──
     document.getElementById('header-add-btn').addEventListener('click', openAddModal);
 
-    // 모달 버튼 이벤트
-    document.getElementById('modal-cancel-btn').addEventListener('click', () => closeModal('modal-add'));
-    document.getElementById('modal-confirm-btn').addEventListener('click', addShop);
+    // ── 부스 추가 모달 ──
+    document.getElementById('modal-add-cancel').addEventListener('click', () => closeModal('modal-add'));
+    document.getElementById('modal-add-confirm').addEventListener('click', addShop);
+    document.getElementById('new-shop-name').addEventListener('keydown', e => { if (e.key === 'Enter') addShop(); });
 
-    // 삭제 모달
+    // ── 부스 복사 모달 ──
+    document.getElementById('modal-copy-cancel').addEventListener('click', () => closeModal('modal-copy'));
+    document.getElementById('modal-copy-confirm').addEventListener('click', copyShop);
+    document.getElementById('copy-shop-name').addEventListener('keydown', e => { if (e.key === 'Enter') copyShop(); });
+
+    // ── 삭제 모달 ──
     document.getElementById('delete-cancel-btn').addEventListener('click', () => {
         closeModal('modal-delete');
         document.getElementById('delete-confirm-input').value = '';
     });
     document.getElementById('confirm-delete-btn').addEventListener('click', confirmDelete);
-
     document.getElementById('delete-confirm-input').addEventListener('input', function () {
         const ok = this.value.trim() === '삭제';
         const btn = document.getElementById('confirm-delete-btn');
@@ -162,23 +238,18 @@ function init() {
         btn.style.opacity = ok ? '1' : '.4';
     });
 
-    // 모달 바깥 클릭 닫기
-    document.getElementById('modal-add').addEventListener('click', function (e) {
-        if (e.target === this) closeModal('modal-add');
-    });
-    document.getElementById('modal-delete').addEventListener('click', function (e) {
-        if (e.target === this) {
-            closeModal('modal-delete');
-            document.getElementById('delete-confirm-input').value = '';
-        }
-    });
-
-    // Enter 키로 부스 추가
-    document.getElementById('new-shop-name').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addShop();
+    // ── 모달 바깥 클릭 닫기 ──
+    ['modal-add', 'modal-copy', 'modal-delete'].forEach(id => {
+        document.getElementById(id).addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal(id);
+                if (id === 'modal-delete') document.getElementById('delete-confirm-input').value = '';
+            }
+        });
     });
 }
 
+// ── 카드 렌더링 ──
 function renderShops() {
     const list = shops.list();
     const grid = document.getElementById('shop-grid');
@@ -189,52 +260,59 @@ function renderShops() {
             <div class="empty-state" style="grid-column:1/-1;">
                 <div class="empty-icon">🏪</div>
                 <div class="empty-text">아직 부스가 없어요.<br>상단 버튼으로 첫 부스를 추가해보세요!</div>
-                <button class="btn btn-primary" id="empty-add-btn">＋ 부스 추가</button>
+                <button class="btn btn-mint" id="empty-add-btn">＋ 부스 추가</button>
             </div>`;
         document.getElementById('empty-add-btn').addEventListener('click', openAddModal);
         return;
     }
 
     grid.innerHTML = list.map(shop => {
-        const salesData = sales.list(shop.id);
+        const salesData  = sales.list(shop.id);
         const totalSales = salesData.reduce((s, i) => s + i.totalPrice, 0);
         const orderCount = new Set(salesData.map(i => i.orderId)).size;
         const createdDate = new Date(shop.createdAt).toLocaleDateString('ko-KR');
         return `
         <div class="shop-card" id="card-${shop.id}">
             <div class="shop-card-top">
-                <div>
+                <div class="shop-name-area">
                     <div class="shop-name" id="name-${shop.id}">${shop.name}</div>
                     <div class="shop-date">생성일: ${createdDate}</div>
                 </div>
-                <button data-rename="${shop.id}" style="background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:18px;padding:2px 6px;" title="이름 변경">✎</button>
+                <div class="card-icon-btns">
+                    <button class="icon-btn copy" data-copy-id="${shop.id}" data-copy-name="${ea(shop.name)}" title="부스 복사">📋</button>
+                    <button class="icon-btn rename" data-rename="${shop.id}" title="이름 변경">✎</button>
+                </div>
             </div>
             <div class="shop-stats">
                 <span class="stat-pill highlight">💰 ${totalSales.toLocaleString()}원</span>
                 <span class="stat-pill">🧾 ${orderCount}건</span>
             </div>
             <div class="shop-actions">
-                <button class="shop-btn shop-btn-pos" data-goto-pos="${shop.id}">POS 열기</button>
-                <button class="shop-btn shop-btn-mgmt" data-goto-inv="${shop.id}">상품 관리</button>
-                <button data-delete-id="${shop.id}" data-delete-name="${shop.name.replace(/"/g,'&quot;')}" style="background:none;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;cursor:pointer;color:var(--text-sub);font-size:13px;transition:all .15s;" title="부스 삭제">🗑</button>
+                <button class="shop-btn-open" data-goto-pos="${shop.id}">상점 열기</button>
+                <button class="shop-btn-delete" data-delete-id="${shop.id}" data-delete-name="${ea(shop.name)}" title="부스 삭제">🗑</button>
             </div>
         </div>`;
     }).join('');
 
-    // 이벤트 위임으로 카드 내 버튼 처리 (Safari 완벽 호환)
+    // 이벤트 위임 (Safari 완벽 호환)
     grid.querySelectorAll('[data-goto-pos]').forEach(btn => {
-        btn.addEventListener('click', () => goTo('local-pos.html', btn.dataset.gotoPos));
-    });
-    grid.querySelectorAll('[data-goto-inv]').forEach(btn => {
-        btn.addEventListener('click', () => goTo('local-inventory.html', btn.dataset.gotoInv));
+        btn.addEventListener('click', () => {
+            location.href = 'local-pos.html?shopId=' + btn.dataset.gotoPos;
+        });
     });
     grid.querySelectorAll('[data-rename]').forEach(btn => {
         btn.addEventListener('click', () => startRename(btn.dataset.rename));
+    });
+    grid.querySelectorAll('[data-copy-id]').forEach(btn => {
+        btn.addEventListener('click', () => openCopyModal(btn.dataset.copyId, btn.dataset.copyName));
     });
     grid.querySelectorAll('[data-delete-id]').forEach(btn => {
         btn.addEventListener('click', () => openDeleteModal(btn.dataset.deleteId, btn.dataset.deleteName));
     });
 }
+
+// 속성 이스케이프
+function ea(str) { return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 // ── 부스 추가 ──
 function openAddModal() {
@@ -249,33 +327,55 @@ function addShop() {
     shops.add(name);
     closeModal('modal-add');
     renderShops();
-    showToast('\'' + name + '\' 부스가 추가됐어요 ✓');
+    showToast('✓ \'' + name + '\' 부스가 추가됐어요');
+}
+
+// ── 부스 복사 ──
+function openCopyModal(id, name) {
+    copySourceId = id;
+    document.getElementById('copy-source-name').textContent = name;
+    document.getElementById('copy-shop-name').value = name + ' (복사)';
+    document.getElementById('modal-copy').classList.add('open');
+    setTimeout(() => {
+        const input = document.getElementById('copy-shop-name');
+        input.focus(); input.select();
+    }, 100);
+}
+
+function copyShop() {
+    const name = document.getElementById('copy-shop-name').value.trim();
+    if (!name) { alert('새 부스 이름을 입력해주세요.'); return; }
+    shops.copy(copySourceId, name);
+    closeModal('modal-copy');
+    renderShops();
+    showToast('📋 \'' + name + '\' 부스로 복사됐어요');
 }
 
 // ── 이름 수정 ──
 function startRename(id) {
     const nameEl = document.getElementById('name-' + id);
+    if (!nameEl) return;
     const current = nameEl.textContent;
     const input = document.createElement('input');
-    input.type = 'text';
-    input.value = current;
-    input.className = 'rename-input';
+    input.type = 'text'; input.value = current; input.className = 'rename-input';
     nameEl.replaceWith(input);
-    input.focus();
-    input.select();
+    input.focus(); input.select();
 
+    let saved = false;
     const finish = () => {
+        if (saved) return; saved = true;
         const newName = input.value.trim() || current;
         shops.rename(id, newName);
         const span = document.createElement('div');
-        span.className = 'shop-name';
-        span.id = 'name-' + id;
-        span.textContent = newName;
+        span.className = 'shop-name'; span.id = 'name-' + id; span.textContent = newName;
         input.replaceWith(span);
-        showToast('이름이 변경됐어요 ✓');
+        showToast('✓ 이름이 변경됐어요');
     };
     input.addEventListener('blur', finish);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') { input.value = current; input.blur(); }
+    });
 }
 
 // ── 부스 삭제 ──
@@ -285,8 +385,7 @@ function openDeleteModal(id, name) {
         '<b>' + name + '</b> 부스의 모든 데이터가 삭제됩니다.<br>상품, 카테고리, 매출 기록 모두 사라지며<br><span style="color:var(--danger);font-weight:600;">되돌릴 수 없습니다.</span>';
     document.getElementById('delete-confirm-input').value = '';
     const btn = document.getElementById('confirm-delete-btn');
-    btn.disabled = true;
-    btn.style.opacity = '.4';
+    btn.disabled = true; btn.style.opacity = '.4';
     document.getElementById('modal-delete').classList.add('open');
 }
 
@@ -300,14 +399,11 @@ function confirmDelete() {
 }
 
 // ── 유틸 ──
-function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function showToast(msg) {
     const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
+    t.className = 'toast'; t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2500);
 }
