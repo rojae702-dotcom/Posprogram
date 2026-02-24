@@ -76,25 +76,36 @@ export const shops = {
 
     // ★ 부스 복사 — 상품·카테고리 복제, 매출은 초기화
     copy: (sourceId, newName) => {
-        const list = load('yul_shops');
-        const newShop = { id: generateId(), name: newName, createdAt: new Date().toISOString() };
-        list.push(newShop);
-        save('yul_shops', list);
+        try {
+            // 1) 새 부스 등록
+            const list = load('yul_shops');
+            const newId = generateId();
+            const newShop = { id: newId, name: newName, createdAt: new Date().toISOString() };
+            list.push(newShop);
+            save('yul_shops', list);
 
-        // 카테고리 복사 (id만 새로 발급)
-        const srcCats = JSON.parse(localStorage.getItem(`yul_${sourceId}_categories`) || '[]');
-        const newCats = srcCats.map(c => ({ ...c, id: generateId() }));
-        localStorage.setItem(`yul_${newShop.id}_categories`, JSON.stringify(newCats));
+            // 2) 카테고리 복사 — load()/save() 사용으로 안전하게
+            const srcCats = load(`yul_${sourceId}_categories`);
+            const newCats = srcCats.map(c => ({ ...c, id: generateId() }));
+            save(`yul_${newId}_categories`, newCats.length > 0 ? newCats : [{ id: generateId(), name: '일반' }]);
 
-        // 상품 복사 (id만 새로 발급, 매출 제외)
-        const srcProds = JSON.parse(localStorage.getItem(`yul_${sourceId}_products`) || '[]');
-        const newProds = srcProds.map(p => ({ ...p, id: generateId(), createdAt: new Date().toISOString() }));
-        localStorage.setItem(`yul_${newShop.id}_products`, JSON.stringify(newProds));
+            // 3) 상품 복사 — 각 상품에 새 id 발급
+            const srcProds = load(`yul_${sourceId}_products`);
+            const newProds = srcProds.map(p => ({
+                ...p,
+                id: generateId(),
+                createdAt: new Date().toISOString(),
+            }));
+            save(`yul_${newId}_products`, newProds);
 
-        // 매출은 빈 배열로
-        localStorage.setItem(`yul_${newShop.id}_sales`, '[]');
+            // 4) 매출은 빈 배열
+            save(`yul_${newId}_sales`, []);
 
-        return newShop;
+            return newShop;
+        } catch (e) {
+            console.error('부스 복사 실패:', e);
+            return null;
+        }
     },
 };
 
