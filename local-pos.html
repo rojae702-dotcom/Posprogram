@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yul POS — 결제</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── 공통 변수 ── */
+        :root {
+            --mint:        #a0f3ef;
+            --mint-dark:   #7de8e3;
+            --mint-light:  #e8fffe;
+            --yellow:      #ffe082;
+            --yellow-dark: #ffd54f;
+            --bg:          #f4f6f8;
+            --white:       #ffffff;
+            --border:      #e2e6ea;
+            --text:        #1e2329;
+            --text-sub:    #6b7684;
+            --danger:      #ef4444;
+            --danger-light:#fee2e2;
+            --success:     #10b981;
+            --success-light:#d1fae5;
+            --radius:      12px;
+            --radius-sm:   8px;
+            --radius-lg:   16px;
+            --shadow-sm:   0 1px 4px rgba(0,0,0,0.06);
+            --shadow:      0 2px 12px rgba(0,0,0,0.08);
+            --shadow-md:   0 4px 20px rgba(0,0,0,0.10);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: var(--bg); color: var(--text);
+            font-size: 14px; -webkit-font-smoothing: antialiased;
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+        /* 버튼 */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: all .15s; white-space: nowrap; }
+        .btn:active { transform: scale(.97); }
+        .btn-ghost { background: var(--bg); color: var(--text-sub); }
+        .btn-ghost:hover { background: var(--border); }
+        .btn-mint  { background: var(--mint); color: var(--text); }
+        .btn-mint:hover { background: var(--mint-dark); }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        /* 헤더 */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 56px; background: var(--white); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
+        .top-bar-title { font-size: 1.1rem; font-weight: 700; }
+        /* 스크롤바 */
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .main-container {
+            display: flex; gap: 16px; padding: 16px;
+            flex: 1; overflow: hidden;
+        }
+
+        /* 좌측 상품 */
+        .product-section {
+            flex: 2.2; display: flex; flex-direction: column;
+            gap: 12px; min-width: 0; overflow: hidden;
+        }
+
+        #category-nav { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+        .cat-btn {
+            padding: 7px 18px; border: 1.5px solid var(--border);
+            border-radius: 20px; background: var(--white);
+            cursor: pointer; font-family: inherit; font-size: 13px;
+            font-weight: 600; color: var(--text-sub); transition: all .15s;
+        }
+        .cat-btn:hover { border-color: var(--mint-dark); color: var(--text); }
+        .cat-btn.active { background: var(--yellow); border-color: var(--yellow-dark); color: var(--text); }
+
+        #product-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 12px; overflow-y: auto; align-content: start;
+            flex: 1; padding-bottom: 4px;
+        }
+        #product-grid::-webkit-scrollbar { width: 5px; }
+        #product-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .product-card {
+            background: var(--white); border: 1.5px solid var(--border);
+            border-radius: var(--radius); overflow: hidden; cursor: pointer;
+            display: flex; flex-direction: column;
+            transition: transform .15s, box-shadow .15s, border-color .15s;
+            box-shadow: var(--shadow);
+        }
+        .product-card:hover:not(.sold-out-card) { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--mint-dark); }
+        .product-card:active:not(.sold-out-card) { transform: translateY(0); }
+        .sold-out-card { cursor: default; opacity: .85; }
+
+        .product-img-wrap {
+            width: 100%; aspect-ratio: 1/1; background: #f0f2f4;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; position: relative;
+        }
+        .product-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .no-img-placeholder { color: #c8cdd3; font-size: 0.75rem; font-weight: 500; }
+
+        .sold-out-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.38); display: flex; align-items: center; justify-content: center; }
+        .sold-out-badge { background: #ff8a8a; color: white; padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 0.82rem; }
+
+        .product-info { padding: 10px 10px 11px; border-top: 1px solid var(--border); }
+        .product-name { font-size: 0.82rem; color: var(--text-sub); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .product-price { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+
+        /* 우측 주문 */
+        .cart-section {
+            width: 280px; flex-shrink: 0; background: var(--white);
+            border-radius: var(--radius); padding: 20px 18px 18px;
+            display: flex; flex-direction: column;
+            box-shadow: var(--shadow-md); border: 1px solid var(--border);
+            height: 100%;
+        }
+        .cart-title { text-align: center; font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+        .cart-labels { display: flex; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); padding-bottom: 8px; border-bottom: 1.5px solid var(--border); margin-bottom: 2px; }
+
+        #cart-items { flex: 1; overflow-y: auto; }
+        #cart-items::-webkit-scrollbar { width: 4px; }
+        #cart-items::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .cart-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f2f4; font-size: 0.88rem; }
+        .cart-row-name { flex: 2; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+        .cart-row-qty { flex: 1.5; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .qty-btn { width: 22px; height: 22px; border: none; background: var(--mint); color: var(--text); border-radius: 5px; cursor: pointer; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: background .12s; }
+        .qty-btn:hover { background: var(--mint-dark); }
+        .qty-num { font-weight: 700; min-width: 16px; text-align: center; }
+        .cart-row-price { flex: 1; text-align: right; font-weight: 600; font-size: 0.85rem; }
+
+        .cart-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-sub); font-size: 0.85rem; }
+
+        .cart-footer { margin-top: 10px; padding-top: 14px; border-top: 2px solid var(--text); }
+        .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .total-label { font-size: 0.95rem; font-weight: 600; }
+        .total-amount { font-size: 1.15rem; font-weight: 700; }
+
+        .pay-buttons { display: flex; gap: 8px; }
+        .pay-btn { flex: 1; padding: 13px 0; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.9rem; background: var(--mint); color: var(--text); transition: background .15s, transform .1s; }
+        .pay-btn:hover { background: var(--mint-dark); }
+        .pay-btn:active { transform: scale(.97); }
+
+        .no-products { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-sub); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<header class="top-bar">
+    <button class="btn btn-ghost" onclick="location.href='local-inventory.html'">상품 관리</button>
+    <span id="shop-name-display" class="top-bar-title"></span>
+    <div style="width:80px"></div>
+</header>
+
+<div class="main-container">
+    <div class="product-section">
+        <div id="category-nav"></div>
+        <div id="product-grid"></div>
+    </div>
+
+    <div class="cart-section">
+        <div class="cart-title">주문내역</div>
+        <div class="cart-labels">
+            <span style="flex:2">상품명</span>
+            <span style="flex:1.5;text-align:center">수량</span>
+            <span style="flex:1;text-align:right">가격</span>
+        </div>
+        <div id="cart-items"><div class="cart-empty">상품을 선택해 주세요.</div></div>
+        <div class="cart-footer">
+            <div class="total-row">
+                <span class="total-label">합계</span>
+                <span class="total-amount" id="total-price">0원</span>
+            </div>
+            <div class="pay-buttons">
+                <button class="pay-btn" onclick="handlePayment('현금')">현금결제</button>
+                <button class="pay-btn" onclick="handlePayment('계좌이체')">계좌이체</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { shopName, categories, products, sales } from './local-storage.js';
+
+let cart = [];
+let allProducts = [];
+
+// ── 초기화 ──
+function init() {
+    document.getElementById('shop-name-display').textContent = shopName.get() || 'Yul POS';
+    categories.init();
+    loadProducts();
+}
+
+function loadProducts() {
+    allProducts = products.list();
+    const cats = ['전체', ...categories.list().map(c => c.name)];
+    renderCategoryNav(cats);
+    renderProducts(allProducts);
+}
+
+// ── 카테고리 ──
+function renderCategoryNav(cats) {
+    const nav = document.getElementById('category-nav');
+    nav.innerHTML = cats.map((cat, i) => `
+        <button class="cat-btn ${i === 0 ? 'active' : ''}" onclick="filterCat('${cat}', this)">
+            ${cat}
+        </button>
+    `).join('');
+}
+
+window.filterCat = (cat, btn) => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filtered = cat === '전체' ? allProducts : allProducts.filter(p => p.category === cat);
+    renderProducts(filtered);
+};
+
+// ── 상품 렌더링 ──
+function renderProducts(list) {
+    const grid = document.getElementById('product-grid');
+    if (list.length === 0) {
+        grid.innerHTML = '<div class="no-products">등록된 상품이 없습니다.<br>상품 관리에서 추가해주세요.</div>';
+        return;
+    }
+    grid.innerHTML = list.map(p => {
+        const isSoldOut = p.status === '품절';
+        return `
+        <div class="product-card ${isSoldOut ? 'sold-out-card' : ''}"
+             onclick="${isSoldOut ? '' : `addToCart('${p.id}')`}">
+            <div class="product-img-wrap">
+                ${p.imageUrl
+                    ? `<img src="${p.imageUrl}" alt="${p.name}">`
+                    : `<span class="no-img-placeholder">이미지 없음</span>`}
+                ${isSoldOut ? `<div class="sold-out-overlay"><span class="sold-out-badge">품절</span></div>` : ''}
+            </div>
+            <div class="product-info">
+                <div class="product-name">${p.name}</div>
+                <div class="product-price">${p.price.toLocaleString()}원</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── 장바구니 ──
+window.addToCart = (id) => {
+    const p = allProducts.find(p => p.id === id);
+    if (!p) return;
+    const existing = cart.find(c => c.id === id);
+    if (existing) existing.quantity++;
+    else cart.push({ id: p.id, name: p.name, price: p.price, quantity: 1 });
+    renderCart();
+};
+
+window.updateQty = (idx, change) => {
+    cart[idx].quantity += change;
+    if (cart[idx].quantity <= 0) cart.splice(idx, 1);
+    renderCart();
+};
+
+function renderCart() {
+    const el = document.getElementById('cart-items');
+    if (cart.length === 0) {
+        el.innerHTML = '<div class="cart-empty">상품을 선택해 주세요.</div>';
+        document.getElementById('total-price').textContent = '0원';
+        return;
+    }
+    el.innerHTML = cart.map((item, i) => `
+        <div class="cart-row">
+            <div class="cart-row-name">${item.name}</div>
+            <div class="cart-row-qty">
+                <button class="qty-btn" onclick="updateQty(${i}, -1)">−</button>
+                <span class="qty-num">${item.quantity}</span>
+                <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
+            </div>
+            <div class="cart-row-price">${(item.price * item.quantity).toLocaleString()}원</div>
+        </div>
+    `).join('');
+    const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+    document.getElementById('total-price').textContent = total.toLocaleString() + '원';
+}
+
+// ── 결제 ──
+window.handlePayment = (method) => {
+    if (cart.length === 0) return alert('담긴 상품이 없습니다.');
+    const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+    sales.addOrder(cart, method);
+    alert(`총 ${total.toLocaleString()}원 ${method} 결제 완료!`);
+    cart = [];
+    renderCart();
+};
+
+init();
+</script>
+</body>
+</html>
