@@ -1,23 +1,15 @@
 /**
- * local-storage.js — 배포용 localStorage 데이터 레이어
- * Appwrite 없이 모든 데이터를 기기 로컬에 저장
+ * local-storage.js — 배포용 localStorage 데이터 레이어 (멀티 부스)
  *
  * 저장 키 구조:
- *   yul_products   → 상품 목록 (배열)
- *   yul_categories → 카테고리 목록 (배열)
- *   yul_sales      → 매출 내역 (배열)
- *   yul_shop_name  → 상점 이름 (문자열)
+ *   yul_shops                → 부스 목록 (배열)
+ *   yul_{shopId}_products    → 부스별 상품
+ *   yul_{shopId}_categories  → 부스별 카테고리
+ *   yul_{shopId}_sales       → 부스별 매출
  */
 
-const KEYS = {
-    products:   'yul_products',
-    categories: 'yul_categories',
-    sales:      'yul_sales',
-    shopName:   'yul_shop_name',
-};
-
 // ── 유틸 ──
-function generateId() {
+export function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
@@ -26,51 +18,93 @@ function load(key) {
     catch { return []; }
 }
 
+function loadStr(key) {
+    return localStorage.getItem(key) || '';
+}
+
 function save(key, data) {
     localStorage.setItem(key, JSON.stringify(data));
 }
 
-// ── 상점 이름 ──
-export const shopName = {
-    get: () => localStorage.getItem(KEYS.shopName) || '',
-    set: (name) => localStorage.setItem(KEYS.shopName, name),
-};
+// ── URL에서 shopId 추출 ──
+export function getShopId() {
+    return new URLSearchParams(location.search).get('shopId') || '';
+}
 
-// ── 카테고리 ──
-export const categories = {
-    list: () => load(KEYS.categories),
+// ── 부스 목록 ──
+export const shops = {
+    list: () => load('yul_shops'),
 
     add: (name) => {
-        const cats = load(KEYS.categories);
-        if (cats.find(c => c.name === name)) return null;
-        const cat = { id: generateId(), name };
-        cats.push(cat);
-        save(KEYS.categories, cats);
-        return cat;
+        const list = load('yul_shops');
+        const shop = { id: generateId(), name, createdAt: new Date().toISOString() };
+        list.push(shop);
+        save('yul_shops', list);
+        // 기본 카테고리 생성
+        save(`yul_${shop.id}_categories`, [{ id: generateId(), name: '일반' }]);
+        return shop;
     },
 
     remove: (id) => {
-        const cats = load(KEYS.categories).filter(c => c.id !== id);
-        save(KEYS.categories, cats);
+        const list = load('yul_shops').filter(s => s.id !== id);
+        save('yul_shops', list);
+        // 해당 부스 데이터 전체 삭제
+        ['products', 'categories', 'sales'].forEach(k => {
+            localStorage.removeItem(`yul_${id}_${k}`);
+        });
     },
 
-    init: () => {
-        // 카테고리 없으면 기본값 생성
-        if (load(KEYS.categories).length === 0) {
-            save(KEYS.categories, [{ id: generateId(), name: '일반' }]);
+    rename: (id, name) => {
+        const list = load('yul_shops');
+        const idx = list.findIndex(s => s.id === id);
+        if (idx !== -1) { list[idx].name = name; save('yul_shops', list); }
+    },
+
+    get: (id) => load('yul_shops').find(s => s.id === id) || null,
+};
+
+// ── shopId 기반 키 생성 ──
+function keys(shopId) {
+    return {
+        products:   `yul_${shopId}_products`,
+        categories: `yul_${shopId}_categories`,
+        sales:      `yul_${shopId}_sales`,
+    };
+}
+
+// ── 카테고리 ──
+export const categories = {
+    list: (shopId) => load(keys(shopId).categories),
+
+    add: (shopId, name) => {
+        const cats = load(keys(shopId).categories);
+        if (cats.find(c => c.name === name)) return null;
+        const cat = { id: generateId(), name };
+        cats.push(cat);
+        save(keys(shopId).categories, cats);
+        return cat;
+    },
+
+    remove: (shopId, id) => {
+        const cats = load(keys(shopId).categories).filter(c => c.id !== id);
+        save(keys(shopId).categories, cats);
+    },
+
+    init: (shopId) => {
+        if (load(keys(shopId).categories).length === 0) {
+            save(keys(shopId).categories, [{ id: generateId(), name: '일반' }]);
         }
     },
 };
 
 // ── 상품 ──
 export const products = {
-    list: () => load(KEYS.products),
+    list: (shopId) => load(keys(shopId).products),
 
-    get: (id) => load(KEYS.products).find(p => p.id === id) || null,
+    get: (shopId, id) => load(keys(shopId).products).find(p => p.id === id) || null,
 
-    // imageFile: File 객체 → Base64로 변환 후 저장
-    add: async (data, imageFile = null) => {
-        const items = load(KEYS.products);
+    add: async (shopId, data, imageFile = null) => {
+        const items = load(keys(shopId).products);
         const product = {
             id: generateId(),
             name: data.name,
@@ -81,16 +115,14 @@ export const products = {
             imageUrl: '',
             createdAt: new Date().toISOString(),
         };
-        if (imageFile) {
-            product.imageUrl = await fileToBase64(imageFile);
-        }
+        if (imageFile) product.imageUrl = await fileToBase64(imageFile);
         items.push(product);
-        save(KEYS.products, items);
+        save(keys(shopId).products, items);
         return product;
     },
 
-    update: async (id, data, imageFile = null) => {
-        const items = load(KEYS.products);
+    update: async (shopId, id, data, imageFile = null) => {
+        const items = load(keys(shopId).products);
         const idx = items.findIndex(p => p.id === id);
         if (idx === -1) return null;
         items[idx] = {
@@ -101,52 +133,46 @@ export const products = {
             stock: data.stock !== '' && data.stock !== null ? Number(data.stock) : null,
             status: data.status,
         };
-        if (imageFile) {
-            items[idx].imageUrl = await fileToBase64(imageFile);
-        }
-        save(KEYS.products, items);
+        if (imageFile) items[idx].imageUrl = await fileToBase64(imageFile);
+        save(keys(shopId).products, items);
         return items[idx];
     },
 
-    remove: (id) => {
-        const items = load(KEYS.products).filter(p => p.id !== id);
-        save(KEYS.products, items);
+    remove: (shopId, id) => {
+        const items = load(keys(shopId).products).filter(p => p.id !== id);
+        save(keys(shopId).products, items);
     },
 
-    updateCategory: (id, category) => {
-        const items = load(KEYS.products);
+    updateCategory: (shopId, id, category) => {
+        const items = load(keys(shopId).products);
         const idx = items.findIndex(p => p.id === id);
-        if (idx !== -1) { items[idx].category = category; save(KEYS.products, items); }
+        if (idx !== -1) { items[idx].category = category; save(keys(shopId).products, items); }
     },
 };
 
 // ── 매출 ──
 export const sales = {
-    list: () => load(KEYS.sales),
+    list: (shopId) => load(keys(shopId).sales),
 
-    // cart: [{ name, price, quantity }]
-    addOrder: (cart, paymentMethod) => {
-        const items = load(KEYS.sales);
+    addOrder: (shopId, cart, paymentMethod) => {
+        const items = load(keys(shopId).sales);
         const orderId = generateId();
         const now = new Date().toISOString();
         const records = cart.map(item => ({
-            id: generateId(),
-            orderId,
+            id: generateId(), orderId,
             productName: item.name,
             price: item.price,
             quantity: item.quantity,
             totalPrice: item.price * item.quantity,
-            paymentMethod,
-            createdAt: now,
+            paymentMethod, createdAt: now,
         }));
         items.push(...records);
-        save(KEYS.sales, items);
+        save(keys(shopId).sales, items);
         return orderId;
     },
 
-    // 기간 필터링
-    filter: (startDate, endDate) => {
-        const items = load(KEYS.sales);
+    filter: (shopId, startDate, endDate) => {
+        const items = load(keys(shopId).sales);
         return items.filter(s => {
             const t = new Date(s.createdAt);
             if (startDate && t < new Date(startDate + 'T00:00:00')) return false;
@@ -155,52 +181,53 @@ export const sales = {
         });
     },
 
-    // orderId 기준 그룹화
-    grouped: (startDate, endDate) => {
-        const items = sales.filter(startDate, endDate);
+    grouped: (shopId, startDate, endDate) => {
+        const items = sales.filter(shopId, startDate, endDate);
         const groups = {};
         items.forEach(s => {
-            if (!groups[s.orderId]) {
-                groups[s.orderId] = { items: [], total: 0, method: s.paymentMethod, time: s.createdAt };
-            }
+            if (!groups[s.orderId]) groups[s.orderId] = { items: [], total: 0, method: s.paymentMethod, time: s.createdAt };
             groups[s.orderId].items.push(s);
             groups[s.orderId].total += s.totalPrice;
         });
         return Object.values(groups);
     },
 
-    // CSV 내보내기
-    exportCSV: (startDate, endDate) => {
-        const groups = sales.grouped(startDate, endDate);
+    exportCSV: (shopId, startDate, endDate, shopNameStr) => {
+        const groups = sales.grouped(shopId, startDate, endDate);
         const rows = [['주문시간', '주문ID', '상품명', '수량', '단가', '소계', '결제수단']];
         groups.forEach(order => {
             order.items.forEach(item => {
                 rows.push([
                     new Date(item.createdAt).toLocaleString('ko-KR'),
-                    item.orderId,
-                    item.productName,
-                    item.quantity,
-                    item.price,
-                    item.totalPrice,
-                    item.paymentMethod,
+                    item.orderId, item.productName,
+                    item.quantity, item.price, item.totalPrice, item.paymentMethod,
                 ]);
             });
         });
-        const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n'); // BOM for Korean
+        const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `매출내역_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.csv`;
+        a.download = `${shopNameStr}_매출내역_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     },
+
+    // 매출만 초기화
+    resetSales: (shopId) => localStorage.removeItem(keys(shopId).sales),
 };
+
+// ── 전체 초기화 (해당 부스) ──
+export function resetAll(shopId) {
+    ['products', 'categories', 'sales'].forEach(k => {
+        localStorage.removeItem(`yul_${shopId}_${k}`);
+    });
+}
 
 // ── 이미지 → Base64 변환 ──
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
-        // 이미지 리사이즈 (용량 절약: 최대 400px)
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
