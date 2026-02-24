@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS — 결제</title>
+    <title>Yul POS — 결제</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -144,8 +144,41 @@
         .pay-btn { flex: 1; padding: 13px 0; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.9rem; background: var(--mint); color: var(--text); transition: background .15s, transform .1s; }
         .pay-btn:hover { background: var(--mint-dark); }
         .pay-btn:active { transform: scale(.97); }
+        .extra-btn { width: 100%; margin-top: 8px; padding: 10px 0; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--white); cursor: pointer; font-family: inherit; font-weight: 600; font-size: 0.85rem; color: var(--text-sub); transition: all .15s; }
+        .extra-btn:hover { border-color: var(--text-sub); color: var(--text); }
 
-        .no-products { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-sub); font-size: 0.9rem; }
+        /* 판매 외 기록 모달 */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; overflow-y: auto; padding: 30px 16px; }
+        .modal-content { background: var(--white); width: 100%; max-width: 480px; margin: 0 auto; padding: 28px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: modalIn .2s ease; }
+        @keyframes modalIn { from { opacity:0; transform: translateY(-12px) scale(.97); } to { opacity:1; transform: none; } }
+        .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+
+        .reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .reason-btn { padding: 10px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--white); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-sub); transition: all .15s; text-align: center; }
+        .reason-btn:hover { border-color: var(--text); color: var(--text); }
+        .reason-btn.selected { background: var(--mint); border-color: var(--mint-dark); color: var(--text); }
+
+        .nonsale-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius-sm); margin-bottom: 8px; }
+        .nonsale-item-img { width: 38px; height: 38px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+        .nonsale-item-name { flex: 1; font-weight: 600; font-size: 13px; }
+        .nonsale-qty-wrap { display: flex; align-items: center; gap: 8px; }
+        .nonsale-qty-btn { width: 26px; height: 26px; border: none; background: var(--mint); border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+        .nonsale-qty-num { font-weight: 700; min-width: 20px; text-align: center; }
+
+        .memo-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; color: var(--text); resize: none; margin-bottom: 16px; transition: border-color .15s; }
+        .memo-input:focus { outline: none; border-color: var(--mint-dark); }
+
+        .modal-footer { display: flex; gap: 8px; }
+        .modal-footer button { flex: 1; padding: 12px 0; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.9rem; }
+        .btn-cancel { background: var(--bg); color: var(--text-sub); }
+        .btn-confirm { background: var(--mint); color: var(--text); }
+
+        /* 기록 내역 */
+        .nonsale-log { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); flex-shrink: 0; max-height: 120px; overflow-y: auto; }
+        .nonsale-log-title { font-size: 11px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+        .nonsale-log-item { font-size: 12px; color: var(--text-sub); padding: 4px 0; border-bottom: 1px solid #f0f2f4; display: flex; justify-content: space-between; gap: 8px; }
+        .nonsale-log-item:last-child { border: none; }
+        .log-reason-tag { padding: 1px 7px; border-radius: 10px; background: var(--bg); font-size: 11px; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -179,6 +212,37 @@
                 <button class="pay-btn" onclick="handlePayment('현금')">현금결제</button>
                 <button class="pay-btn" onclick="handlePayment('계좌이체')">계좌이체</button>
             </div>
+            <button class="extra-btn" onclick="openNonSaleModal()">📦 판매 외 기록</button>
+        </div>
+        <div class="nonsale-log" id="nonsale-log" style="display:none;">
+            <div class="nonsale-log-title">판매 외 기록</div>
+            <div id="nonsale-log-items"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 판매 외 기록 모달 -->
+<div id="modal-nonsale" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-title">📦 판매 외 기록</div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">사유 선택</div>
+        <div class="reason-grid">
+            <button class="reason-btn" onclick="selectReason(this)" data-reason="선물 / 나눔 / 사은품">🎁 선물 / 나눔 / 사은품</button>
+            <button class="reason-btn" onclick="selectReason(this)" data-reason="파본 / 불량 / 교환">🔄 파본 / 불량 / 교환</button>
+            <button class="reason-btn" onclick="selectReason(this)" data-reason="샘플 / 내부 사용">🖼️ 샘플 / 내부 사용</button>
+            <button class="reason-btn" onclick="selectReason(this)" data-reason="분실 / 도난">🔍 분실 / 도난</button>
+            <button class="reason-btn" onclick="selectReason(this)" data-reason="기타" style="grid-column:1/-1;">📝 기타</button>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">상품 선택</div>
+        <div id="nonsale-product-list" style="margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
+
+        <textarea id="nonsale-memo" class="memo-input" rows="2" placeholder="메모 입력 (선택)"></textarea>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeNonSaleModal()">돌아가기</button>
+            <button class="btn-confirm" onclick="confirmNonSale()">기록 확정하기</button>
         </div>
     </div>
 </div>
@@ -191,9 +255,10 @@ let allProducts = [];
 
 // ── 초기화 ──
 function init() {
-    document.getElementById('shop-name-display').textContent = shopName.get() || 'POS';
+    document.getElementById('shop-name-display').textContent = shopName.get() || 'Yul POS';
     categories.init();
     loadProducts();
+    renderNonSaleLog();
 }
 
 function loadProducts() {
@@ -284,7 +349,106 @@ function renderCart() {
     document.getElementById('total-price').textContent = total.toLocaleString() + '원';
 }
 
-// ── 결제 ──
+// ── 판매 외 기록 ──
+let nonSaleItems = {}; // { productId: qty }
+let selectedReason = '';
+let nonSaleLogs = JSON.parse(localStorage.getItem('yul_nonsale_logs') || '[]');
+
+window.openNonSaleModal = () => {
+    nonSaleItems = {};
+    selectedReason = '';
+    document.getElementById('nonsale-memo').value = '';
+    document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+
+    // 상품 목록 렌더링
+    const list = document.getElementById('nonsale-product-list');
+    list.innerHTML = allProducts.filter(p => p.status !== '품절').map(p => `
+        <div class="nonsale-item">
+            ${p.imageUrl
+                ? `<img class="nonsale-item-img" src="${p.imageUrl}">`
+                : `<div class="nonsale-item-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-sub);">없음</div>`}
+            <span class="nonsale-item-name">${p.name}</span>
+            <div class="nonsale-qty-wrap">
+                <button class="nonsale-qty-btn" onclick="changeNonSaleQty('${p.id}', -1)">−</button>
+                <span class="nonsale-qty-num" id="nqty-${p.id}">0</span>
+                <button class="nonsale-qty-btn" onclick="changeNonSaleQty('${p.id}', 1)">+</button>
+            </div>
+        </div>
+    `).join('') || '<div style="color:var(--text-sub);text-align:center;padding:20px;font-size:13px;">등록된 상품이 없습니다.</div>';
+
+    document.getElementById('modal-nonsale').style.display = 'block';
+};
+
+window.selectReason = (btn) => {
+    document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedReason = btn.dataset.reason;
+};
+
+window.changeNonSaleQty = (id, delta) => {
+    nonSaleItems[id] = Math.max(0, (nonSaleItems[id] || 0) + delta);
+    document.getElementById('nqty-' + id).textContent = nonSaleItems[id];
+};
+
+window.closeNonSaleModal = () => {
+    document.getElementById('modal-nonsale').style.display = 'none';
+};
+
+window.confirmNonSale = () => {
+    if (!selectedReason) { alert('사유를 선택해주세요.'); return; }
+    const selected = Object.entries(nonSaleItems).filter(([, qty]) => qty > 0);
+    if (selected.length === 0) { alert('상품을 1개 이상 선택해주세요.'); return; }
+
+    const memo = document.getElementById('nonsale-memo').value.trim();
+    const now  = new Date().toISOString();
+
+    const log = {
+        id:     Date.now().toString(36),
+        reason: selectedReason,
+        memo,
+        items:  selected.map(([id, qty]) => {
+            const p = allProducts.find(p => p.id === id);
+            return { productId: id, productName: p?.name || '?', qty };
+        }),
+        createdAt: now,
+    };
+
+    nonSaleLogs.unshift(log);
+    localStorage.setItem('yul_nonsale_logs', JSON.stringify(nonSaleLogs));
+
+    closeNonSaleModal();
+    renderNonSaleLog();
+
+    const summary = log.items.map(i => `${i.productName} ${i.qty}개`).join(', ');
+    showToast(`📦 기록 완료: [${selectedReason}] ${summary}`);
+};
+
+function renderNonSaleLog() {
+    const wrap = document.getElementById('nonsale-log');
+    const list = document.getElementById('nonsale-log-items');
+    if (nonSaleLogs.length === 0) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const fmtTime = iso => { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+    list.innerHTML = nonSaleLogs.slice(0, 5).map(log => `
+        <div class="nonsale-log-item">
+            <span>${fmtTime(log.createdAt)} ${log.items.map(i => `${i.productName} ${i.qty}개`).join(', ')}${log.memo ? ` · ${log.memo}` : ''}</span>
+            <span class="log-reason-tag">${log.reason}</span>
+        </div>
+    `).join('');
+}
+
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, { position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', background:'#1a1d23', color:'white', padding:'12px 24px', borderRadius:'8px', fontWeight:'600', fontSize:'13px', boxShadow:'0 4px 20px rgba(0,0,0,0.3)', zIndex:'9999', whiteSpace:'nowrap' });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+}
+
+// 모달 바깥 클릭 닫기
+document.getElementById('modal-nonsale').addEventListener('click', function(e) {
+    if (e.target === this) closeNonSaleModal();
+});
 window.handlePayment = (method) => {
     if (cart.length === 0) return alert('담긴 상품이 없습니다.');
     const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
