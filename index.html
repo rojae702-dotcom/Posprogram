@@ -68,10 +68,10 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js');
+            navigator.serviceWorker.register('./service-worker.js', { scope: './' });
         }
         setTimeout(() => {
-            window.location.href = 'local-pos.html';
+            window.location.href = './local-pos.html';
         }, 1500);
     </script>
 </body>
